@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration scan="true" scanPeriod="300 seconds">
+    <define name="propExists" class="ch.qos.logback.core.property.ResourceExistsPropertyDefiner">
+        <resource>environment.properties</resource>
+    </define>
+    <if condition='${propExists}'>
+        <then>
+            <property resource="environment.properties" />
+            <include resource="logback-${logEnv}.xml"/>
+        </then>
+    </if>
+</configuration>
