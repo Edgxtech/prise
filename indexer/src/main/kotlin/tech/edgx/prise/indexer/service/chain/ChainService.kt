@@ -25,6 +25,7 @@ import tech.edgx.prise.indexer.service.classifier.DexClassifier
 import tech.edgx.prise.indexer.service.dataprovider.ChainDatabaseService
 import tech.edgx.prise.indexer.service.price.HistoricalPriceService
 import tech.edgx.prise.indexer.service.price.LatestPriceService
+import tech.edgx.prise.indexer.thread.KeepAliveThread
 import tech.edgx.prise.indexer.util.Helpers
 import java.time.Duration
 import java.time.LocalDateTime
@@ -135,6 +136,8 @@ class ChainService(private val config: Config) : KoinComponent {
 
         blockSync = BlockSync(config.cnodeAddress,  config.cnodePort!!, NetworkType.MAINNET.protocolMagic, Constants.WELL_KNOWN_MAINNET_POINT)
         blockSync.startSync(initialisationState.chainStartPoint, blockChainDataListener)
+        val keepAliveThread = KeepAliveThread(config, blockSync)
+        keepAliveThread.start()
     }
 
     /* Auto select a point; if no candles, use first dex launch block/slot otherwise check in app

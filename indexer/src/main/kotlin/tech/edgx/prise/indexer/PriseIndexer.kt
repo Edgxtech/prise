@@ -27,6 +27,7 @@ import tech.edgx.prise.indexer.service.dataprovider.module.tokenregistry.TokenRe
 import tech.edgx.prise.indexer.service.monitoring.MonitoringService
 import tech.edgx.prise.indexer.service.price.HistoricalPriceService
 import tech.edgx.prise.indexer.service.price.LatestPriceService
+import tech.edgx.prise.indexer.thread.KeepAliveThread
 import tech.edgx.prise.indexer.thread.LatestPriceBatcher
 import tech.edgx.prise.indexer.util.Helpers
 import tech.edgx.prise.indexer.util.RunMode

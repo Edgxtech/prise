@@ -175,4 +175,8 @@ object Helpers {
             )
         }
     }
+
+    fun getRandomNumber(min: Int, max: Int): Int {
+        return (Math.random() * (max - min) + min).toInt()
+    }
 }
