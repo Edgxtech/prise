@@ -24,7 +24,6 @@ class KeepAliveThread(config: Config, blockSync: BlockSync) : CoroutineScope, Ko
             try {
                 Thread.sleep(10000L)
                 val randomNo: Int = Helpers.getRandomNumber(0, 60000)
-                log.debug("Sending keep alive : $randomNo")
                 blockSync.sendKeepAliveMessage(randomNo)
                 log.debug("Sent keep alive : $randomNo")
             } catch (e: InterruptedException) {
