@@ -15,21 +15,22 @@ class WingridersClassifierTest {
 
     @Test
     fun computeSwap_SingleSwapSingleTransaction() {
+        val swapTxHash = "ab5f019a744345179c3f80a55dec1c9b18266858a2fa09dcb57da7fd8b6cccab"
         val knownSwaps = listOf<Swap>(
-            Swap("ab5f019a744345179c3f80a55dec1c9b18266858a2fa09dcb57da7fd8b6cccab", 112501933, 0, "lovelace", "51a5e236c4de3af2b8020442e2a26f454fda3b04cb621c1294a0ef34424f4f4b", BigInteger.valueOf(252819173), BigInteger.valueOf(5000000000), 1),
+            Swap(swapTxHash, 112501933, 0, "lovelace", "51a5e236c4de3af2b8020442e2a26f454fda3b04cb621c1294a0ef34424f4f4b", BigInteger.valueOf(252819173), BigInteger.valueOf(5000000000), 1),
         )
         val txDTOs: List<FullyQualifiedTxDTO> = Gson().fromJson<List<FullyQualifiedTxDTO>?>(
-            File("src/test/resources/testdata/wr/transactions_swaps_from_block_112501875.json")
+            File("src/test/resources/testdata/wingriders/transactions_swaps_from_block_112501875.json")
                 .readText(Charsets.UTF_8)
                 .byteInputStream()
                 .bufferedReader().readLine(),
-            object : TypeToken<ArrayList<FullyQualifiedTxDTO?>?>() {}.getType())
+            object : TypeToken<ArrayList<FullyQualifiedTxDTO?>?>() {}.type)
             /* This data actually has 4 qualifying tx, for this test only comparing the following */
-            .filter { it.txHash == "ab5f019a744345179c3f80a55dec1c9b18266858a2fa09dcb57da7fd8b6cccab" }
+            .filter { it.txHash == swapTxHash }
         println("# TXDTOS: ${txDTOs.map { it.txHash }}")
         val computedSwaps = WingridersClassifier.computeSwaps(txDTOs.first())
             .filter { it.dex == 0 }
-        assertEquals(computedSwaps.size, knownSwaps.size)
+        assertEquals(knownSwaps.size, computedSwaps.size)
         computedSwaps.zip(knownSwaps).forEach {
             println("Comparing: ${it.first} to ${it.second}")
             assertTrue { it.first.txHash == it.second.txHash }
@@ -45,20 +46,21 @@ class WingridersClassifierTest {
 
     @Test
     fun computeSwap_DuelSwapSingleTransaction() {
+        val swapTxHash = "3be944381a57e86573be4cd0c888e831c7704d0b425f53b4685b3d522e624c5e"
         val knownSwaps = listOf<Swap>(
-            Swap("3be944381a57e86573be4cd0c888e831c7704d0b425f53b4685b3d522e624c5e", 112587121, 0, "lovelace", "b6a7467ea1deb012808ef4e87b5ff371e85f7142d7b356a40d9b42a0436f726e75636f70696173205b76696120436861696e506f72742e696f5d", BigInteger.valueOf(5391695121), BigInteger.valueOf(35000000000), 1),
-            Swap("3be944381a57e86573be4cd0c888e831c7704d0b425f53b4685b3d522e624c5e", 112587121, 0, "lovelace", "b6a7467ea1deb012808ef4e87b5ff371e85f7142d7b356a40d9b42a0436f726e75636f70696173205b76696120436861696e506f72742e696f5d", BigInteger.valueOf(4050000000), BigInteger.valueOf(26169677478), 0),
+            Swap(swapTxHash, 112587121, 0, "lovelace", "b6a7467ea1deb012808ef4e87b5ff371e85f7142d7b356a40d9b42a0436f726e75636f70696173205b76696120436861696e506f72742e696f5d", BigInteger.valueOf(5391695121), BigInteger.valueOf(35000000000), 1),
+            Swap(swapTxHash, 112587121, 0, "lovelace", "b6a7467ea1deb012808ef4e87b5ff371e85f7142d7b356a40d9b42a0436f726e75636f70696173205b76696120436861696e506f72742e696f5d", BigInteger.valueOf(4050000000), BigInteger.valueOf(26169677478), 0),
         )
         val txDTOs: List<FullyQualifiedTxDTO> = Gson().fromJson<List<FullyQualifiedTxDTO>?>(
-            File("src/test/resources/testdata/wr/transactions_swaps_from_block_112587104.json")
+            File("src/test/resources/testdata/wingriders/transactions_qualified_from_block_112587104.json")
                 .readText(Charsets.UTF_8)
                 .byteInputStream()
                 .bufferedReader().readLine(),
-            object : TypeToken<ArrayList<FullyQualifiedTxDTO?>?>() {}.getType())
-            println("# TXDTOS: ${txDTOs.size}")
+            object : TypeToken<ArrayList<FullyQualifiedTxDTO?>?>() {}.type)
+            .filter { it.txHash == swapTxHash }
         val computedSwaps = WingridersClassifier.computeSwaps(txDTOs.first())
         println("Computed swaps, #: ${computedSwaps.size} vs known swaps, #: ${knownSwaps.size}")
-        assertEquals(computedSwaps.size, knownSwaps.size)
+        assertEquals(knownSwaps.size, computedSwaps.size)
         computedSwaps.zip(knownSwaps).forEach {
             println("Comparing: ${it.first} to ${it.second}")
             assertTrue { it.first.txHash == it.second.txHash }

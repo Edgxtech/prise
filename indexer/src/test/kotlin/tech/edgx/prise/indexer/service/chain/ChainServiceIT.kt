@@ -17,7 +17,8 @@ import tech.edgx.prise.indexer.domain.BlockView
 import tech.edgx.prise.indexer.model.FullyQualifiedTxDTO
 import tech.edgx.prise.indexer.model.prices.CandleDTO
 import tech.edgx.prise.indexer.repository.*
-import tech.edgx.prise.indexer.service.BaseIT
+import tech.edgx.prise.indexer.Base
+import tech.edgx.prise.indexer.BaseWithCarp
 import tech.edgx.prise.indexer.service.CandleService
 import tech.edgx.prise.indexer.service.dataprovider.module.carp.jdbc.CarpJdbcService
 import tech.edgx.prise.indexer.testutil.TransactionBodyExcludeStrategy
@@ -28,10 +29,11 @@ import java.time.LocalDateTime
 import java.util.*
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class ChainServiceIT: BaseIT() {
+class ChainServiceIT: BaseWithCarp() {
     private val log = LoggerFactory.getLogger(javaClass)
     val chainService: ChainService by inject { parametersOf(config) }
-    val baseCandleRepository: BaseCandleRepository by inject { parametersOf(config.appDataSource) }
+//    val baseCandleRepository: BaseCandleRepository by inject { parametersOf(config.appDataSource) }
+    val baseCandleRepository: BaseCandleRepository by inject { parametersOf(config.appDatabase) }
     val candleService: CandleService by inject { parametersOf(config) }
 
     val transactionBodyGson: Gson = GsonBuilder().addDeserializationExclusionStrategy(TransactionBodyExcludeStrategy()).create()

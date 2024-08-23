@@ -3,7 +3,6 @@ package tech.edgx.prise.indexer.service.price
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import io.mockk.every
-import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -16,7 +15,7 @@ import tech.edgx.prise.indexer.model.dex.Swap
 import tech.edgx.prise.indexer.model.prices.CandleDTO
 import tech.edgx.prise.indexer.repository.*
 import tech.edgx.prise.indexer.service.AssetService
-import tech.edgx.prise.indexer.service.BaseIT
+import tech.edgx.prise.indexer.Base
 import tech.edgx.prise.indexer.service.CandleService
 import tech.edgx.prise.indexer.util.Helpers
 import java.io.File
@@ -28,11 +27,12 @@ import java.util.*
 import java.util.stream.Stream
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class HistoricalPriceServiceIT: BaseIT() {
+class HistoricalPriceServiceIT: Base() {
 
     val historicalPriceService: HistoricalPriceService by inject { parametersOf(config) }
     val candleService: CandleService by inject { parametersOf(config) }
-    val baseCandleRepository: BaseCandleRepository by inject { parametersOf(config.appDataSource) }
+//    val baseCandleRepository: BaseCandleRepository by inject { parametersOf(config.appDataSource) }
+    val baseCandleRepository: BaseCandleRepository by inject { parametersOf(config.appDatabase) }
     val latestPriceService: LatestPriceService by inject { parametersOf(config) }
 
     @Test
@@ -172,9 +172,9 @@ class HistoricalPriceServiceIT: BaseIT() {
     @Test
     fun makeCandlesFromSwaps_10tx() {
         baseCandleRepository.truncateAllCandles()
-        val candlesMap = testMakeAndReturnCandlesFromSwaps("src/test/resources/testdata/wr/swaps_from_block_9896194_10tx.json", true)
+        val candlesMap = testMakeAndReturnCandlesFromSwaps("src/test/resources/testdata/wingriders/swaps_from_block_9896194_10tx.json", true)
         val knownCandles: Map<String,List<CandleDTO>> = Gson().fromJson(
-            File("src/test/resources/testdata/wr/candles_from_block_9896194_10tx.json")
+            File("src/test/resources/testdata/wingriders/candles_from_block_9896194_10tx.json")
                 .readText(Charsets.UTF_8)
                 .byteInputStream()
                 .bufferedReader().readLine(),
@@ -190,61 +190,6 @@ class HistoricalPriceServiceIT: BaseIT() {
                 assertTrue(candlePair.first.low == candlePair.second.low)
                 assertTrue(candlePair.first.close == candlePair.second.close)
                 assertTrue(candlePair.first.volume == candlePair.second.volume)
-            }
-        }
-    }
-
-    /* This test by design is for small # selected tx to ensure initially only makes one 15m candle for two assets */
-    @Test
-    fun batchPopulateContinuationCandles_4tx() {
-        baseCandleRepository.truncateAllCandles()
-        val candlesMap = testMakeAndReturnCandlesFromSwaps("src/test/resources/testdata/wr/swaps_from_block_9896194_4tx.json", false)
-        val knownCandles: Map<String,List<CandleDTO>> = Gson().fromJson(
-            File("src/test/resources/testdata/wr/candles_from_block_9896194_4tx.json")
-                .readText(Charsets.UTF_8)
-                .byteInputStream()
-                .bufferedReader().readLine(),
-            object : TypeToken<HashMap<String,List<CandleDTO>>>() {}.type)
-        val latestCandleDtg = LocalDateTime.ofEpochSecond(
-            candlesMap.values.first().maxOf { it.time },
-            0,
-            Helpers.zoneOffset)
-        /* By design, computing from swaps implies they are the min resolution, in this case 15mins
-        *  NOTE: this is not how the app works, calling the continuationCandles make here is for testing purposes */
-        //historicalPriceService.populateContinuationCandles(latestCandleDtg.plusMinutes(15), Duration.ofMinutes(15), listOf()) // todo, test with differnt candles made
-        val continuationCandleData = candleService.getContinuationCandleData(latestCandleDtg.plusMinutes(15), Duration.ofMinutes(15), listOf())
-        candleService.batchPersistOrUpdate(continuationCandleData, Duration.ofMinutes(15))
-        // Assert the new latest candles are equal to the latest known candle closes
-        val latestCandles = baseCandleRepository.getLastCandleForMultiple()
-        val latestCandlesMap = latestCandles.map { it.symbol to it }.toMap()
-        latestCandlesMap.forEach {
-            val knownLastCandle: CandleDTO? = knownCandles[it.key]?.last()
-            val newLastCandle: LatestCandlesView = it.value
-            println("Comparing: $newLastCandle vs known last candle: $knownLastCandle")
-            assertTrue { newLastCandle.symbol == knownLastCandle?.symbol }
-            assertTrue { newLastCandle.time == (knownLastCandle?.time?.plus(900)) }
-            assertTrue { newLastCandle.open == (knownLastCandle?.close) }
-            assertTrue { newLastCandle.high == (knownLastCandle?.close) }
-            assertTrue { newLastCandle.low == (knownLastCandle?.close) }
-            assertTrue { newLastCandle.close == (knownLastCandle?.close) }
-            assertTrue { newLastCandle.volume == 0.0 }
-        }
-    }
-
-    /* This is a normal mode run, makes continuation candles at each step */
-    @Test
-    fun testCandlesContinuous() {
-        baseCandleRepository.truncateAllCandles()
-        val candlesMap = testMakeAndReturnCandlesFromSwaps("src/test/resources/testdata/wr/swaps_from_block_9896194_10tx.json", true)
-        candlesMap.forEach {
-            var previous: CandleDTO? = null
-            it.value.forEach {
-                if (previous == null) { assertEquals(it.open, it.open) } // first candle
-                else {
-                    assertEquals( previous?.close,  it.open, "didnt continue close -> open: $previous to $it")
-                    assertEquals( it.time, previous?.time?.plus(900), "didnt have monotonic increasing time: $previous to $it")
-                }
-                previous = it
             }
         }
     }

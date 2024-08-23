@@ -128,7 +128,7 @@ class HistoricalPriceHelpersTest {
             unit = "lovelace"
             decimals = 6
         }
-        val reader = File("src/test/resources/testdata/wr/swaps_01Jan24_01Feb24.csv")
+        val reader = File("src/test/resources/testdata/wingriders/swaps_01Jan24_01Feb24.csv")
             .readText(Charsets.UTF_8).byteInputStream().bufferedReader()
         reader.readLine()
         val swaps: List<Swap> = reader.lineSequence()
@@ -168,7 +168,7 @@ class HistoricalPriceHelpersTest {
             unit = "lovelace"
             decimals = 6
         }
-        val csvString: String = File("src/test/resources/testdata/wr/swaps_01Jan24_01Feb24.csv").readText(Charsets.UTF_8)
+        val csvString: String = File("src/test/resources/testdata/wingriders/swaps_01Jan24_01Feb24.csv").readText(Charsets.UTF_8)
         val reader = csvString.byteInputStream().bufferedReader()
         reader.readLine()
         val swaps: List<Swap> = reader.lineSequence()
@@ -210,7 +210,7 @@ class HistoricalPriceHelpersTest {
             unit = "lovelace"
             decimals = 6
         }
-        val csvString: String = File("src/test/resources/testdata/wr/swaps_01Jan24_01Feb24.csv").readText(Charsets.UTF_8)
+        val csvString: String = File("src/test/resources/testdata/wingriders/swaps_01Jan24_01Feb24.csv").readText(Charsets.UTF_8)
         val reader = csvString.byteInputStream().bufferedReader()
         reader.readLine()
         val swaps: List<Swap> = reader.lineSequence()
@@ -252,7 +252,7 @@ class HistoricalPriceHelpersTest {
             unit = "lovelace"
             decimals = 6
         }
-        val csvString: String = File("src/test/resources/testdata/wr/swaps_01Jan24_01Feb24.csv").readText(Charsets.UTF_8)
+        val csvString: String = File("src/test/resources/testdata/wingriders/swaps_01Jan24_01Feb24.csv").readText(Charsets.UTF_8)
         val reader = csvString.byteInputStream().bufferedReader()
         reader.readLine()
         val swaps: List<Swap> = reader.lineSequence()
@@ -294,7 +294,7 @@ class HistoricalPriceHelpersTest {
             unit = "lovelace"
             decimals = 6
         }
-        val csvString: String = File("src/test/resources/testdata/wr/swaps_01Jan24_01Feb24.csv").readText(Charsets.UTF_8)
+        val csvString: String = File("src/test/resources/testdata/wingriders/swaps_01Jan24_01Feb24.csv").readText(Charsets.UTF_8)
         val reader = csvString.byteInputStream().bufferedReader()
         reader.readLine()
         val swaps: List<Swap> = reader.lineSequence()

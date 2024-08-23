@@ -5,13 +5,14 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.TestInstance
 import org.koin.core.parameter.parametersOf
 import org.koin.test.inject
+import tech.edgx.prise.indexer.Base
 import tech.edgx.prise.indexer.domain.Asset
 import tech.edgx.prise.indexer.model.DexEnum
 import java.time.LocalDateTime
 import java.util.*
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class AssetServiceIT: BaseIT() {
+class AssetServiceIT: Base() {
 
     val assetService: AssetService by inject { parametersOf(config) }
 

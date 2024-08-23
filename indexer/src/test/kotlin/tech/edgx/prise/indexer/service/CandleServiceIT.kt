@@ -6,16 +6,17 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.koin.core.parameter.parametersOf
 import org.koin.test.inject
+import tech.edgx.prise.indexer.Base
 import tech.edgx.prise.indexer.model.prices.CandleDTO
 import tech.edgx.prise.indexer.repository.*
 import tech.edgx.prise.indexer.util.Helpers
 import java.time.Duration
 import java.time.LocalDateTime
 
-class CandleServiceIT: BaseIT() {
+class CandleServiceIT: Base() {
 
     val candleService: CandleService by inject { parametersOf(config) }
-    val baseCandleRepository : BaseCandleRepository by inject{ parametersOf(config.appDataSource) }
+    val baseCandleRepository : BaseCandleRepository by inject{ parametersOf(config.appDatabase) }
 
     @Ignore
     @Test

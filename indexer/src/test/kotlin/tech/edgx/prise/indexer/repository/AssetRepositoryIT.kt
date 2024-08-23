@@ -6,13 +6,14 @@ import tech.edgx.prise.indexer.domain.Asset
 import org.junit.jupiter.api.Assertions.*
 import org.koin.core.parameter.parametersOf
 import org.koin.test.inject
-import tech.edgx.prise.indexer.service.BaseIT
+import tech.edgx.prise.indexer.Base
 import java.util.*
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class AssetRepositoryIT: BaseIT() {
+class AssetRepositoryIT: Base() {
 
-    val assetRepository: AssetRepository by inject { parametersOf(config.appDataSource) }
+    //val assetRepository: AssetRepository by inject { parametersOf(config.appDataSource) }
+    val assetRepository: AssetRepository by inject { parametersOf(config.appDatabase) }
 
     @Test
     fun batchInsert() {

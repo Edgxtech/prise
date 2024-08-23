@@ -10,7 +10,6 @@ import com.bloxbean.cardano.yaci.helper.listener.BlockChainDataListener
 import com.bloxbean.cardano.yaci.helper.model.Transaction
 import com.bloxbean.cardano.yaci.helper.reactive.BlockStreamer
 import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
@@ -20,7 +19,8 @@ import org.koin.core.qualifier.named
 import org.koin.test.inject
 import tech.edgx.prise.indexer.model.DexEnum
 import tech.edgx.prise.indexer.model.dex.Swap
-import tech.edgx.prise.indexer.service.BaseIT
+import tech.edgx.prise.indexer.Base
+import tech.edgx.prise.indexer.BaseWithCarp
 import tech.edgx.prise.indexer.service.chain.ChainService
 import tech.edgx.prise.indexer.util.Helpers
 
@@ -32,7 +32,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class SundaeswapClassifierIT: BaseIT() {
+class SundaeswapClassifierIT: BaseWithCarp() {
 
     val chainService: ChainService by inject { parametersOf(config) }
     val sundaeswapClassifier: DexClassifier by inject(named("sundaeswapClassifier"))
@@ -40,6 +40,8 @@ class SundaeswapClassifierIT: BaseIT() {
     val point_01Jan24 = Point(112500883, "d1c77b5e2de38cacf6b5ab723fe6681ad879ba3a5405e8e8aa74fa1c73b4a5d8")
     val slot_01Jan24 = 112500909L
     val slot_01Jan24_0100 = 112504509L
+    val slot_01Jan24_0005 = 112501209L
+    val slot_01Jan24_0010 = 112501509L
 
     @Test
     fun computeSwaps_SingleTransaction_1() {
@@ -269,24 +271,24 @@ class SundaeswapClassifierIT: BaseIT() {
     }
 
     @Test
-    fun computeSwaps_FromChainSync_1HR() {
+    fun computeSwaps_FromChainSync_10mins() {
         /*
             TIMESTAMPS:
-            01 Jan 24 -
+            01 Jan 24 - 0000
             Epoch timestamp: 1704067200
             Timestamp in seconds: 1704067200
             Date and time (GMT): Monday, 1 January 2024 00:00:00
             SLOT: 1704067200-1591566291=112500909
             Block nearest to slot: 112500909: BlockView(hash=d1c77b5e2de38cacf6b5ab723fe6681ad879ba3a5405e8e8aa74fa1c73b4a5d8, epoch=458, height=9746375, slot=112500883)
 
-            01 Jan 24: 0100
-            Epoch timestamp: 1704070800
-            Timestamp in milliseconds: 1704070800000
-            Date and time (GMT): Monday, 1 January 2024 01:00:00
-            Date and time (your time zone): Monday, 1 January 2024 09:00:00 GMT+08:00
-            SLOT:  1704070800-1591566291=112504509
+            01 Jan 24: 0010
+            Epoch timestamp: 1704067800
+            Date and time (GMT): Monday, 1 January 2024 00:10:00
+            SLOT:  1704067800-1591566291=112501509
         */
-        val reader = File("src/test/resources/testdata/ss/swaps_0000Z01Jan24_0100Z01Jan24.csv")
+        val fromSlot = slot_01Jan24
+        val untilSlot = slot_01Jan24_0010
+        val reader = File("src/test/resources/testdata/sundaeswap/swaps_0000Z01Jan24_0100Z01Jan24.csv")
             .readText(Charsets.UTF_8).byteInputStream().bufferedReader()
         reader.readLine()
         val knownSwaps: List<Swap> = reader.lineSequence()
@@ -295,11 +297,11 @@ class SundaeswapClassifierIT: BaseIT() {
                 val parts = it.split(",")
                 Swap(txHash = parts[0], parts[1].toLong(), parts[2].toInt(), parts[3], parts[4], parts[5].toBigInteger(), parts[6].toBigInteger(), parts[7].toInt() )
             }
-            .filter { it.slot in slot_01Jan24..slot_01Jan24_0100 } // Filter to 01 Jan 24 00:00 to 01:00 HOUR only
+            .filter { it.slot in fromSlot..untilSlot } // Filter to 01 Jan 24 00:00 to 00:10 10 mins only
             .toList()
         println("Last known swap: ${knownSwaps.last()}, timestamp: ${LocalDateTime.ofEpochSecond(knownSwaps.last().slot - Helpers.slotConversionOffset, 0, Helpers.zoneOffset)}")
 
-        // start sync from 01 Jan 24 and compute all swaps for one month
+        // start sync from 01 Jan 24 and compute all swaps for the time period
         var allSwaps = mutableListOf<Swap>()
         val blockSync = BlockSync(config.cnodeAddress,  config.cnodePort!!, NetworkType.MAINNET.protocolMagic, Constants.WELL_KNOWN_MAINNET_POINT)
         blockSync.startSync(point_01Jan24,
@@ -332,11 +334,11 @@ class SundaeswapClassifierIT: BaseIT() {
         runBlocking {
             while(true) {
                 if (allSwaps.isNotEmpty() && allSwaps.size > runningSwapsCount) {
-                    println("Running # swaps: ${allSwaps.size}, Up to slot: ${allSwaps.last().slot}, syncing until: $slot_01Jan24_0100")
+                    println("Running # swaps: ${allSwaps.size}, Up to slot: ${allSwaps.last().slot}, syncing until: $untilSlot")
                     runningSwapsCount = allSwaps.size
                 }
 
-                if (allSwaps.isNotEmpty() && allSwaps.last().slot > slot_01Jan24_0100) {
+                if (allSwaps.isNotEmpty() && allSwaps.last().slot > untilSlot) {
                     break
                 }
                 delay(100)
@@ -345,18 +347,19 @@ class SundaeswapClassifierIT: BaseIT() {
         }
 
         // Sort them exactly the same way since multiple swaps per tx, and multiple tx per block
-        val orderedComputedSwaps = allSwaps.sortedBy { it.slot }.sortedBy { it.txHash }.sortedBy { it.operation }.sortedBy { it.amount1 }.filter { it.slot < slot_01Jan24_0100 }
+        val orderedComputedSwaps = allSwaps.sortedBy { it.slot }.sortedBy { it.txHash }.sortedBy { it.operation }.sortedBy { it.amount1 }.filter { it.slot < untilSlot }
         val orderedKnownSwaps = knownSwaps.sortedBy { it.slot }.sortedBy { it.txHash }.sortedBy { it.operation }.sortedBy { it.amount1 }
 
         // TEMP, just to speed up devtesting
-        val writer: PrintWriter = File("src/test/resources/testdata/ss/computed_swaps_0000Z01Jan24-0100Z01Jan24.json").printWriter()
+        val writer: PrintWriter = File("src/test/resources/testdata/sundaeswap/computed_swaps_0000Z01Jan24-0010Z01Jan24.json").printWriter()
         writer.println(Gson().toJson(orderedComputedSwaps))
         writer.flush()
         writer.close()
 
         println("Comparing known swaps #: ${orderedKnownSwaps.size} to computedSwaps #: ${orderedComputedSwaps.size}")
-        assertEquals(orderedComputedSwaps.size, orderedKnownSwaps.size)
-        orderedComputedSwaps.zip(orderedKnownSwaps).forEach {
+        println("Comparing known swaps: $orderedKnownSwaps to computedSwaps: $orderedComputedSwaps")
+        assertEquals(orderedKnownSwaps.size, orderedComputedSwaps.size,)
+        orderedKnownSwaps.zip(orderedComputedSwaps).forEach {
             println("Comparing: ${it.first} to ${it.second}")
             assertTrue { it.first.txHash == it.second.txHash }
             assertTrue { it.first.slot == it.second.slot }
@@ -366,47 +369,6 @@ class SundaeswapClassifierIT: BaseIT() {
             assertTrue { it.first.amount1 == it.second.amount1 }
             assertTrue { it.first.amount2 == it.second.amount2 }
             assertTrue { it.first.operation == it.second.operation }
-        }
-    }
-
-    @Test
-    fun computeSwaps_FromSaved_1HR() {
-        val reader = File("src/test/resources/testdata/ss/swaps_0000Z01Jan24_0100Z01Jan24.csv")
-            .readText(Charsets.UTF_8).byteInputStream().bufferedReader()
-        reader.readLine()
-        val knownSwaps: List<Swap> = reader.lineSequence()
-            .filter { it.isNotBlank() }
-            .map {
-                val parts = it.split(",")
-                Swap(txHash = parts[0], parts[1].toLong(), parts[2].toInt(), parts[3], parts[4], parts[5].toBigInteger(), parts[6].toBigInteger(), parts[7].toInt() )
-            }
-            .filter { it.slot in slot_01Jan24..slot_01Jan24_0100 } // Filter to 01 Jan 24 00:00 to 01:00 HOUR only
-            .toList()
-        println("Last known swap: ${knownSwaps.last()}, timestamp: ${LocalDateTime.ofEpochSecond(knownSwaps.last().slot - Helpers.slotConversionOffset, 0, Helpers.zoneOffset)}")
-
-        // Pull previously computed swaps, just for efficiency it takes a while to compute
-        val orderedComputedSwaps: List<Swap> = Gson().fromJson(
-            File("src/test/resources/testdata/ss/computed_swaps_0000Z01Jan24-0100Z01Jan24.json")
-                .readText(Charsets.UTF_8)
-                .byteInputStream()
-                .bufferedReader().readLine(),
-            object : TypeToken<List<Swap>>() {}.type)
-
-        val orderedKnownSwaps = knownSwaps.sortedBy { it.slot }.sortedBy { it.txHash }.sortedBy { it.operation }.sortedBy { it.amount1 }
-        println("Comparing known swaps #: ${orderedKnownSwaps.size} to computedSwaps #: ${orderedComputedSwaps.size}")
-        var idx = 0
-        assertEquals(orderedComputedSwaps.size, orderedKnownSwaps.size)
-        orderedComputedSwaps.zip(orderedKnownSwaps).forEach {
-            println("Comparing computed swap, idx: $idx, ${it.first} vs known: ${it.second}, ")
-            assertTrue { it.first.slot == it.second.slot }
-            assertTrue { it.first.operation == it.second.operation }
-            assertTrue { it.first.txHash == it.second.txHash }
-            assertTrue { it.first.asset1Unit == it.second.asset1Unit }
-            assertTrue { it.first.asset2Unit == it.second.asset2Unit }
-            assertTrue { it.first.amount1 == it.second.amount1 }
-            assertTrue { it.first.amount2 == it.second.amount2 }
-            assertTrue { it.first.dex== it.second.dex }
-            idx++
         }
     }
 

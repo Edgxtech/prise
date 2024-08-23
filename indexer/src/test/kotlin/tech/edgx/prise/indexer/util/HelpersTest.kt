@@ -3,12 +3,13 @@ package tech.edgx.prise.indexer.util
 import com.bloxbean.cardano.client.util.HexUtil
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
+import tech.edgx.prise.indexer.model.DexEnum
 import java.time.LocalDateTime
 
 class HelpersTest {
 
     @Test
-    fun regexp() {
+    fun regexpMatchPolicy() {
         val r = "^\\p{XDigit}{64}+$".toRegex()
         assertTrue(r.matches("69837fca12d5d8fe4011866e20a5377e849f7611042fb460a96fde55838db8ec"))
     }
@@ -17,12 +18,7 @@ class HelpersTest {
     fun convertAddressToCredential() {
         val cred = Helpers.convertScriptAddressToPaymentCredential("addr1z8snz7c4974vzdpxu65ruphl3zjdvtxw8strf2c2tmqnxzvuxnvpk6sacr650lmfeqmmpxvhes2nq89lcvvgpq786n6qrzzw73")
         println("Credential: $cred")
-    }
-
-    @Test
-    fun convertAddressToPaymentCredential() {
-        println("PC1: ${Helpers.convertScriptAddressToPaymentCredential("addr1zxn9efv2f6w82hagxqtn62ju4m293tqvw0uhmdl64ch8uw6j2c79gy9l76sdg0xwhd7r0c0kna0tycz4y5s6mlenh8pq6s3z70")}")
-        //  > PC: a65ca58a4e9c755fa830173d2a5caed458ac0c73f97db7faae2e7e3b
+        assertEquals("e1317b152faac13426e6a83e06ff88a4d62cce3c1634ab0a5ec13309", cred)
     }
 
     @Test
@@ -47,10 +43,12 @@ class HelpersTest {
 
     @Test
     fun getDexName() {
-        assertTrue(Helpers.getDexName(0) == "wingriders")
-        assertTrue(Helpers.getDexName(1) == "sundaeswap")
-        assertTrue(Helpers.getDexName(2) == "minswap")
-        assertThrows(Exception::class.java) { Helpers.getDexName(3) }
+        assertTrue(Helpers.getDexName(0) == DexEnum.WINGRIDERS.nativeName)
+        assertTrue(Helpers.getDexName(1) == DexEnum.SUNDAESWAP.nativeName)
+        assertTrue(Helpers.getDexName(2) == DexEnum.MINSWAP.nativeName)
+        assertTrue(Helpers.getDexName(3) == DexEnum.MINSWAPV2.nativeName)
+        assertTrue(Helpers.getDexName(4) == DexEnum.SATURNSWAP.nativeName)
+        assertThrows(Exception::class.java) { Helpers.getDexName(5) }
         assertThrows(Exception::class.java) { Helpers.getDexName(-1) }
     }
 

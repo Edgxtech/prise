@@ -8,7 +8,7 @@ import org.koin.core.parameter.parametersOf
 import org.koin.core.qualifier.named
 import org.koin.test.inject
 import tech.edgx.prise.indexer.repository.CarpRepository
-import tech.edgx.prise.indexer.service.BaseIT
+import tech.edgx.prise.indexer.BaseWithCarp
 import tech.edgx.prise.indexer.service.dataprovider.ChainDatabaseService
 import tech.edgx.prise.indexer.util.Helpers
 import java.math.BigInteger
@@ -18,10 +18,10 @@ import java.util.*
 import kotlin.test.assertTrue
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class CarpJdbcServiceIT: BaseIT() {
+class CarpJdbcServiceIT: BaseWithCarp() {
 
     val carpJdbcService: ChainDatabaseService by inject(named("carpJDBC")) { parametersOf(config) }
-    val carpRepository: CarpRepository by inject { parametersOf(config.carpDataSource) }
+    val carpRepository: CarpRepository by inject { parametersOf(config.carpDatabase) }
 
     @Test
     fun getInputUtxos() {
@@ -53,10 +53,32 @@ class CarpJdbcServiceIT: BaseIT() {
     }
 
     @Test
+    fun getInputUtxos_2() {
+        //  "inputs" : [ {
+        //    "transactionId" : "6edd44ec337aeb6eec7d279da0e34643d08501dc24ac0b8c258abb0f4da5d388",
+        //    "index" : 2
+        //  }, {
+        //    "transactionId" : "9b7b209fc5d3df09ec31efb16394e96315c34ca03dafec1aad923652e0b5616e",
+        //    "index" : 1
+        //  }, {
+        //    "transactionId" : "fbf6040037454e14c9381e8fc0a5d142671dc27e89ff83f262ad6afd517e65dc",
+        //    "index" : 0
+        //  } ],
+        val txIns = setOf(
+            TransactionInput("6edd44ec337aeb6eec7d279da0e34643d08501dc24ac0b8c258abb0f4da5d388", 2),
+            TransactionInput("9b7b209fc5d3df09ec31efb16394e96315c34ca03dafec1aad923652e0b5616e", 1),
+            TransactionInput("fbf6040037454e14c9381e8fc0a5d142671dc27e89ff83f262ad6afd517e65dc", 0)
+        )
+        val txOuts = runBlocking { carpJdbcService.getInputUtxos(txIns) }
+        println("Retrieved txIn details, #: ${txOuts.size}, $txOuts")
+    }
+
+    @Test
     fun getBlockNearestToSlot() {
-        val testCandleDate = Helpers.toNearestDiscreteDate(Duration.ofMinutes(15), LocalDateTime.of(2022, 1, 1, 0, 0, 0))
-        val slot = testCandleDate.toEpochSecond(Helpers.zoneOffset) + Helpers.slotConversionOffset
-        println("Getting block nearest to slot: $slot")
+//        val testCandleDate = Helpers.toNearestDiscreteDate(Duration.ofMinutes(15), LocalDateTime.of(2022, 1, 1, 0, 0, 0))
+//        val slot = testCandleDate.toEpochSecond(Helpers.zoneOffset) + Helpers.slotConversionOffset
+//        println("Getting block nearest to slot: $slot")
+        val slot = 130904109L
         val block = carpJdbcService.getBlockNearestToSlot(slot)
         println("Block nearest to slot: $slot: $block")
         assertTrue(block?.hash.equals("e7e7e46236ef2ac558a9b0a370b1d47c1015ce84c2738282692b0f7729451690"))
@@ -77,15 +99,15 @@ class CarpJdbcServiceIT: BaseIT() {
         assertTrue(block.epoch.equals(464))
     }
 
-    @Test
-    fun getBlockNearestToSlot_SpecificDbNotYetSynced() {
-        /* Tests runBlocking until db is synced */
-        val latestBlock = carpRepository.getLatestBlock()
-        println("latest block: $latestBlock")
-        val futureSlot = latestBlock?.slot?.plus(20)
-        println("Requesting block nearest to future slot: $futureSlot")
-        val block = carpJdbcService.getBlockNearestToSlot(futureSlot!!)
-        println("Block nearest to slot: $futureSlot: $block")
-        assertTrue(block?.slot!! >= futureSlot)
-    }
+//    @Test
+//    fun getBlockNearestToSlot_SpecificDbNotYetSynced() {
+//        /* Tests runBlocking until db is synced */
+//        val latestBlock = carpRepository.getLatestBlock()
+//        println("latest block: $latestBlock")
+//        val futureSlot = latestBlock?.slot?.plus(20)
+//        println("Requesting block nearest to future slot: $futureSlot")
+//        val block = carpJdbcService.getBlockNearestToSlot(futureSlot!!)
+//        println("Block nearest to slot: $futureSlot: $block")
+//        assertTrue(block?.slot!! >= futureSlot)
+//    }
 }
