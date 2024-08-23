@@ -22,7 +22,7 @@ class KeepAliveThread(config: Config, blockSync: BlockSync) : CoroutineScope, Ko
     fun start() = launch(CoroutineName("keep_alive_thread")) {
         while (isActive) {
             try {
-                Thread.sleep(10000L)
+                Thread.sleep(8000L)
                 val randomNo: Int = Helpers.getRandomNumber(0, 60000)
                 blockSync.sendKeepAliveMessage(randomNo)
                 log.debug("Sent keep alive : $randomNo")
