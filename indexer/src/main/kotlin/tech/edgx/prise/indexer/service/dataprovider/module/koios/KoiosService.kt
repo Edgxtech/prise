@@ -36,7 +36,7 @@ class KoiosService(private val config: Config) : KoinComponent, ChainDatabaseSer
             log.warn("Couldn't get inputUTXOs, status: ${response.statusCode()}, message: ${response}")
             return listOf()
         }
-        val utxos: List<UtxoDetails> = Gson().fromJson(response.body(), object : TypeToken<List<UtxoDetails>>() {}.getType())
+        val utxos: List<UtxoDetails> = Gson().fromJson(response.body(), object : TypeToken<List<UtxoDetails>>() {}.type)
         val txInRefMap = utxos.associateBy { it.tx_hash+it.tx_index }
         val sameOrderedUtxos = txIns.map { txInRefMap[it.transactionId+it.index]!! }
         return sameOrderedUtxos

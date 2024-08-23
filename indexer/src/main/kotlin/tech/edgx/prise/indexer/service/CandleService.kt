@@ -15,11 +15,11 @@ import java.time.LocalDateTime
 class CandleService(config: Config): KoinComponent {
     private val log = LoggerFactory.getLogger(javaClass::class.java)
 
-    private val weeklyCandleRepository: WeeklyCandleRepository = get { parametersOf(config.appDataSource) }
-    private val dailyCandleRepository: DailyCandleRepository = get { parametersOf(config.appDataSource) }
-    private val hourlyCandleRepository: HourlyCandleRepository = get { parametersOf(config.appDataSource) }
-    private val fifteenCandleRepository: FifteenCandleRepository = get { parametersOf(config.appDataSource) }
-    private val baseCandleRepository: BaseCandleRepository = get { parametersOf(config.appDataSource) }
+    private val weeklyCandleRepository: WeeklyCandleRepository = get { parametersOf(config.appDatabase) }
+    private val dailyCandleRepository: DailyCandleRepository = get { parametersOf(config.appDatabase) }
+    private val hourlyCandleRepository: HourlyCandleRepository = get { parametersOf(config.appDatabase) }
+    private val fifteenCandleRepository: FifteenCandleRepository = get { parametersOf(config.appDatabase) }
+    private val baseCandleRepository: BaseCandleRepository = get { parametersOf(config.appDatabase) }
 
     fun getFifteenById(symbol: String): List<Candle> {
         return fifteenCandleRepository.getById(symbol)

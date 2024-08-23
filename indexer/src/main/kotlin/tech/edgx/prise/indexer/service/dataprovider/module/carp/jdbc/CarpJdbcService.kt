@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit
 class CarpJdbcService(config: Config) : KoinComponent, ChainDatabaseService {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    val carpRepository: CarpRepository by inject { parametersOf(config.carpDataSource) }
+    val carpRepository: CarpRepository by inject { parametersOf(config.carpDatabase) }
 
     override fun getBlockNearestToSlot(slot: Long): BlockView? {
         var block: BlockView?
@@ -74,7 +74,7 @@ class CarpJdbcService(config: Config) : KoinComponent, ChainDatabaseService {
                             it.address,
                             amounts,
                             HexUtil.encodeHexString(it.datumHash),
-                            it.inlineDatum?.datumHash,
+                            it.inlineDatum?.serializeToHex(),//it.inlineDatum?.datumHash,
                             HexUtil.encodeHexString(it.scriptRef)) }
     }
 }

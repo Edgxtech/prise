@@ -14,9 +14,9 @@ import tech.edgx.prise.indexer.util.Helpers
 import java.time.LocalDateTime
 import javax.sql.DataSource
 
-class HourlyCandleRepository(dataSource: DataSource) {
+class HourlyCandleRepository(database: Database) {
     private val log = LoggerFactory.getLogger(javaClass)
-    private val database = Database.connect(dataSource)
+    private val database = database
     var batch_size = 1000
 
     val Database.candles get() = this.sequenceOf(HourlyCandles)

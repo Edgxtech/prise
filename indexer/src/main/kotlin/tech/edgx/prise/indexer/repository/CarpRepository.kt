@@ -15,8 +15,8 @@ import javax.sql.DataSource
    - Could use the standard carp webserver to get the 'spent' transactionOutputs, however cannot also use it to get the blockNearestToSlot
    - Don't want the add another webserver to this project, so instead just connecting by jdbc until finding a simpler approach
  */
-class CarpRepository(dataSource: DataSource) : KoinComponent {
-    private val database = Database.connect(dataSource)
+class CarpRepository(database: Database): KoinComponent {
+    private val database = database
 
     fun getTransactionOutput(txInHashes: Array<String>, txInIdxs: Array<Int>): List<TransactionOutputView> {
         val transactionOutputs = database.useConnection { conn ->
@@ -52,7 +52,7 @@ class CarpRepository(dataSource: DataSource) : KoinComponent {
                     "where slot >= ? order by slot asc limit 1"
             conn.prepareStatement(sql).use { statement ->
                 statement.setLong(1,slot)
-                var rs: ResultSet = statement.executeQuery()
+                val rs: ResultSet = statement.executeQuery()
                 if (rs.next()) {
                     BlockView(
                         rs.getString("hash"),
@@ -73,7 +73,29 @@ class CarpRepository(dataSource: DataSource) : KoinComponent {
             val sql = "select encode(hash,'hex') as hash, epoch, height, slot from \"Block\" " +
                     "order by slot desc limit 1"
             conn.prepareStatement(sql).use { statement ->
-                var rs: ResultSet = statement.executeQuery()
+                val rs: ResultSet = statement.executeQuery()
+                if (rs.next()) {
+                    BlockView(
+                        rs.getString("hash"),
+                        rs.getInt("epoch"),
+                        rs.getLong("height"),
+                        rs.getLong("slot"))
+                }
+                else {
+                    return null
+                }
+            }
+        }
+        return latestBlock
+    }
+
+    fun getBlockByHeight(height: Long): BlockView? {
+        val latestBlock = database.useConnection { conn ->
+            val sql = "select encode(hash,'hex') as hash, epoch, height, slot from \"Block\" " +
+                    "where height = ?"
+            conn.prepareStatement(sql).use { statement ->
+                statement.setLong(1,height)
+                val rs: ResultSet = statement.executeQuery()
                 if (rs.next()) {
                     BlockView(
                         rs.getString("hash"),

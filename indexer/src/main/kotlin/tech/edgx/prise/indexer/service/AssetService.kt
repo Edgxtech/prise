@@ -10,7 +10,7 @@ import java.time.LocalDateTime
 
 class AssetService(config: Config): KoinComponent {
 
-    val assetRepository: AssetRepository = get { parametersOf(config.appDataSource) }
+    val assetRepository: AssetRepository = get { parametersOf(config.appDatabase) }
 
     fun save(asset: Asset) {
         assetRepository.save(asset)

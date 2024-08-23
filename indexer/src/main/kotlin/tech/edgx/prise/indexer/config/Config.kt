@@ -1,5 +1,6 @@
 package tech.edgx.prise.indexer.config
 
+import org.ktorm.database.Database
 import tech.edgx.prise.indexer.util.RunMode
 import javax.sql.DataSource
 
@@ -39,5 +40,8 @@ data class Config(
     var startMetricsServer: Boolean? = true,
     var metricsServerPort: Int? = 9103,
 
-    var logEnv: String = "prod"
+    var logEnv: String = "prod",
+
+    var appDatabase: Database? = null,
+    var carpDatabase: Database? = null
 )

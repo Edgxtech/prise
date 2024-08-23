@@ -5,6 +5,7 @@ import com.zaxxer.hikari.HikariDataSource
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.koin.core.qualifier.named
+import org.ktorm.database.Database
 import org.slf4j.LoggerFactory
 import tech.edgx.prise.indexer.service.classifier.DexClassifier
 import tech.edgx.prise.indexer.service.classifier.common.DexClassifierEnum
@@ -80,7 +81,7 @@ class Configurer(private val configFile: String?): KoinComponent {
             if (!TokenMetadataServiceEnum.entries.map { m -> m.name }.contains(properties[TOKEN_METADATA_SERVICE_MODULE_PROPERTY])) {
                 throw ConfigurationException("You selected an invalid token metadata service: ${properties.getProperty(TOKEN_METADATA_SERVICE_MODULE_PROPERTY)}")
             }
-            if (!ChainDatabaseServiceEnum.entries.map { m -> m.name }.contains(properties[CHAIN_DATABASE_SERVICE_MODULE_PROPERTY])) {
+            if (!properties.getProperty(CHAIN_DATABASE_SERVICE_MODULE_PROPERTY).isNullOrEmpty() && !ChainDatabaseServiceEnum.entries.map { m -> m.name }.contains(properties[CHAIN_DATABASE_SERVICE_MODULE_PROPERTY])) {
                 throw ConfigurationException("You selected an invalid chain database service: ${properties.getProperty(CHAIN_DATABASE_SERVICE_MODULE_PROPERTY)}")
             }
             if ((properties[CHAIN_DATABASE_SERVICE_MODULE_PROPERTY] == ChainDatabaseServiceEnum.carpJDBC.name) &&
@@ -155,22 +156,31 @@ class Configurer(private val configFile: String?): KoinComponent {
             maximumPoolSize = 10
         }
         config.appDataSource = HikariDataSource(appDbConfig)
+        val appDatabase = Database.connect(config.appDataSource as HikariDataSource)
+        config.appDatabase = appDatabase
 
         config.chainDatabaseServiceModule=properties.getProperty(CHAIN_DATABASE_SERVICE_MODULE_PROPERTY)
 
         // TODO, if (config.chainDatabaseServiceModule==ChainDatabaseServiceEnum.carpJDBC.name)
-        config.carpDatasourceUrl = properties.getProperty(CARP_DB_URL_PROPERTY)
-        config.carpDatasourceUsername = properties.getProperty(CARP_DB_UNAME_PROPERTY)
-        config.carpDatasourcePassword = properties.getProperty(CARP_DB_PASS_PROPERTY)
-        config.carpDatasourceDriverClassName = properties.getProperty(CARP_DB_DRIVER_PROPERTY)
-        val carpDbConfig = HikariConfig().apply {
-            jdbcUrl = config.carpDatasourceUrl
-            driverClassName = config.carpDatasourceDriverClassName
-            username = config.carpDatasourceUsername
-            password = config.carpDatasourcePassword
-            maximumPoolSize = 10
+        if (!properties.getProperty(CARP_DB_URL_PROPERTY).isNullOrEmpty()) {
+            config.carpDatasourceUrl = properties.getProperty(CARP_DB_URL_PROPERTY)
+            config.carpDatasourceUsername = properties.getProperty(CARP_DB_UNAME_PROPERTY)
+            config.carpDatasourcePassword = properties.getProperty(CARP_DB_PASS_PROPERTY)
+            config.carpDatasourceDriverClassName = properties.getProperty(CARP_DB_DRIVER_PROPERTY)
+            val carpDbConfig = HikariConfig().apply {
+                jdbcUrl = config.carpDatasourceUrl
+                driverClassName = config.carpDatasourceDriverClassName
+                username = config.carpDatasourceUsername
+                password = config.carpDatasourcePassword
+                maximumPoolSize = 3
+            }
+            config.carpDataSource = HikariDataSource(carpDbConfig)
+
+            val database = Database.connect(config.carpDataSource as HikariDataSource)
+            config.carpDatabase = database
+        } else {
+            println("CARP PROPERTIES NOT ENTERED")
         }
-        config.carpDataSource = HikariDataSource(carpDbConfig)
 
         config.koiosDatasourceUrl = properties.getProperty(KOIOS_DATASOURCE_URL_PROPERTY)
         config.koiosDatasourceApiKey = properties.getProperty(KOIOS_DATASOURCE_APIKEY_PROPERTY)
@@ -182,6 +192,7 @@ class Configurer(private val configFile: String?): KoinComponent {
 
         config.dexClassifiers = properties.getProperty(DEX_CLASSIFIERS_PROPERTY)
             .split(",")
+        println("Dex classifiers from config: ${config.dexClassifiers}")
 
         validateConfig(config)
         return config

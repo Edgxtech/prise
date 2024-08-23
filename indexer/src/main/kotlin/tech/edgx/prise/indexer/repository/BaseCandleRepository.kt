@@ -7,9 +7,9 @@ import org.slf4j.LoggerFactory
 import tech.edgx.prise.indexer.domain.*
 import javax.sql.DataSource
 
-class BaseCandleRepository(dataSource: DataSource) {
+class BaseCandleRepository(database: Database) {
     private val log = LoggerFactory.getLogger(javaClass::class.java)
-    private val database = Database.connect(dataSource)
+    private val database = database
 
     fun Database.truncate(table: BaseTable<*>): Int {
         useConnection { conn ->

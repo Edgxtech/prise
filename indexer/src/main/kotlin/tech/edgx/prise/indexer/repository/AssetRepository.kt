@@ -12,9 +12,10 @@ import tech.edgx.prise.indexer.domain.*
 import java.time.LocalDateTime
 import javax.sql.DataSource
 
-class AssetRepository(dataSource: DataSource): KoinComponent {
+class AssetRepository(database: Database): KoinComponent {
     private val log = LoggerFactory.getLogger(javaClass::class.java)
-    private val database = Database.connect(dataSource)
+    private val database = database
+
     var batch_size = 500
 
     val Database.assets get() = this.sequenceOf(Assets)

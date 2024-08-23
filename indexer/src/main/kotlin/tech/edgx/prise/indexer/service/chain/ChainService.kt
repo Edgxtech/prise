@@ -51,7 +51,7 @@ class ChainService(private val config: Config) : KoinComponent {
 
     var initialised = false
 
-    private val decClassifierMap: Map<String, DexClassifier> = dexClassifiers
+    private val dexClassifierMap: Map<String, DexClassifier> = dexClassifiers
         .flatMap {dexClassifier ->
             dexClassifier.getPoolScriptHash().map {
                 it to dexClassifier
@@ -59,14 +59,14 @@ class ChainService(private val config: Config) : KoinComponent {
         .filter { config.dexClassifiers?.contains(it.second.getDexName())?: false }
         .toMap()
 
-    private val dexPaymentCredentials = decClassifierMap.keys
+    private val dexPaymentCredentials = dexClassifierMap.keys
 
     fun startSync(syncStatusCallback: (Long) -> Unit) {
         candleService.addIndexesIfRequired()
 
         /* determine chain start point && the candle sync start points enabling continuation of candles */
         val initialisationState = determineInitialisationState(config.startPointTime)
-        log.info("Using initialisation state: $initialisationState, \nclassifiers: ${decClassifierMap.values.toSet().map { it.getDexName() }}, \nchain db service: $chainDatabaseService")
+        log.info("Using initialisation state: $initialisationState, \nclassifiers: ${dexClassifierMap.values.toSet().map { it.getDexName() }}, \nchain db service: $chainDatabaseService")
 
         val blockChainDataListener = object : BlockChainDataListener {
             override fun onBlock(era: Era, block: Block, transactions: List<Transaction>) {
@@ -201,8 +201,8 @@ class ChainService(private val config: Config) : KoinComponent {
 
         /* Compute swaps and add/update assets and latest prices */
         qualifiedTxMap.forEach txloop@{ txDTO ->
-            val swaps = decClassifierMap[txDTO.dexCredential]?.computeSwaps(txDTO)
-            log.debug("Computing swaps for dex: ${txDTO.dexCode}, ${txDTO.txHash}, Classifier: ${decClassifierMap[txDTO.dexCredential]}, # swaps: ${swaps?.size}")
+            val swaps = dexClassifierMap[txDTO.dexCredential]?.computeSwaps(txDTO)
+            log.debug("Computing swaps for dex: ${txDTO.dexCode}, ${txDTO.txHash}, Classifier: ${dexClassifierMap[txDTO.dexCredential]}, # swaps: ${swaps?.size}")
 
             if (!swaps.isNullOrEmpty()) {
                 allSwaps.addAll(swaps)
