@@ -52,18 +52,6 @@ class KoiosServiceIT: Base() {
         assertTrue(txOuts[2].scriptRef == null)
     }
 
-    // TOOD, fix, inline_datum parsing fails here
-//    @Test
-//    fun getInputUtxos_2() {
-//        val txIns = setOf(
-//            TransactionInput("6edd44ec337aeb6eec7d279da0e34643d08501dc24ac0b8c258abb0f4da5d388", 2),
-//            TransactionInput("9b7b209fc5d3df09ec31efb16394e96315c34ca03dafec1aad923652e0b5616e", 1),
-//            TransactionInput("fbf6040037454e14c9381e8fc0a5d142671dc27e89ff83f262ad6afd517e65dc", 0)
-//        )
-//        val txOuts = runBlocking { koiosService.getInputUtxos(txIns) }
-//        println("Retrieved txIn details, #: ${txOuts.size}, $txOuts")
-//    }
-
     @Test
     fun getBlockNearestToSlot() {
         val testCandleDate = Helpers.toNearestDiscreteDate(Duration.ofMinutes(15), LocalDateTime.of(2022, 1, 1, 0, 0, 0))
