@@ -25,11 +25,10 @@ object MinswapClassifier: DexClassifier {
         val swapDirection: Int
     )
 
-    val DEX_CODE = 1
+    val DEX_CODE = 2
     val DEX_NAME = DexClassifierEnum.Minswap.name
     val POOL_SCRIPT_HASHES = listOf("e1317b152faac13426e6a83e06ff88a4d62cce3c1634ab0a5ec13309", "57c8e718c201fba10a9da1748d675b54281d3b1b983c5d1687fc7317")
-    val ORDER_ADDRESSES_V1 = listOf("addr1wyx22z2s4kasd3w976pnjf9xdty88epjqfvgkmfnscpd0rg3z8y6v", "addr1wxn9efv2f6w82hagxqtn62ju4m293tqvw0uhmdl64ch8uwc0h43gt")
-    val ORDER_ADDRESSES_V2 = listOf("addr1zxn9efv2f6w82hagxqtn62ju4m293tqvw0uhmdl64ch8uw6j2c79gy9l76sdg0xwhd7r0c0kna0tycz4y5s6mlenh8pq6s3z70")
+    val ORDER_CREDENTIALS_V1 = listOf("0ca50950adbb06c5c5f6833924a66ac873e43202588b6d338602d78d", "a65ca58a4e9c755fa830173d2a5caed458ac0c73f97db7faae2e7e3b")
     val SWAP_IN_ADA: BigInteger = BigInteger.valueOf(4000000)
     val SWAP_OUT_ADA: BigInteger = BigInteger.valueOf(2000000)
 
@@ -76,7 +75,7 @@ object MinswapClassifier: DexClassifier {
         /* Minswap V1 */
         // Operation info is contained in datum from inputs to the script
         val inputDatumPairsV1 = txDTO.inputUtxos
-            .filter { ORDER_ADDRESSES_V1.contains(it.address) }
+            .filter { ORDER_CREDENTIALS_V1.contains(Helpers.convertScriptAddressToPaymentCredential(it.address)) }
             .map { txOut ->
                 val datum = ClassifierHelpers.getPlutusDataFromOutput(txOut, txDTO.witnesses.datums)
                 Pair(txOut, datum)
@@ -85,18 +84,7 @@ object MinswapClassifier: DexClassifier {
         val versionSpecificSwapsV1 = computeVersionSpecificSwaps(txDTO, inputDatumPairsV1, asset1Unit, asset2Unit, DexEnum.MINSWAP)
         log.debug("V1 specific swaps: $versionSpecificSwapsV1")
 
-        /* Minswap V2 */
-        val inputDatumPairsV2 = txDTO.inputUtxos
-            .filter { ORDER_ADDRESSES_V2.contains(it.address) }
-            .map { txOut ->
-                val datum = ClassifierHelpers.getPlutusDataFromOutput(txOut, txDTO.witnesses.datums)
-                Pair(txOut, datum)
-            }
-        val versionSpecificSwapsV2 = computeVersionSpecificSwaps(txDTO, inputDatumPairsV2, asset1Unit, asset2Unit, DexEnum.MINSWAPV2)
-        log.debug("V2 specific swaps, #: ${versionSpecificSwapsV2.size}, V1 specific swaps, #: ${versionSpecificSwapsV1.size}")
-
         swaps.addAll(versionSpecificSwapsV1)
-        swaps.addAll(versionSpecificSwapsV2)
         log.debug("Computed swaps: $swaps")
         return swaps
     }
@@ -130,13 +118,18 @@ object MinswapClassifier: DexClassifier {
                     log.debug("Comparing: ${it.address}, ${Helpers.convertScriptAddressToHex(it.address)} to $address")
                     Helpers.convertScriptAddressToHex(it.address) == address }?: return@swaploop
 
+            val adjustment1 = lpInputDatumJsonNode.get("fields")?.get(4)?.get("int")?.asLong()?: return@swaploop
+
             val amountOperationDTO = when (swapToAssetUnit == asset2Unit) {
                 true -> {
                     AmountOperationDTO(
                         input.amounts
                             .filter { it.unit == "lovelace" }
                             .map { it.quantity }
-                            .reduceOrNull { a, b -> a.plus(b) }?.minus(SWAP_IN_ADA)?: return@swaploop,
+                            .reduceOrNull { a, b -> a.plus(b) }
+                            ?.minus(SWAP_IN_ADA)
+                            ?.plus (if (adjustment1!=2000000L) BigInteger.valueOf(2000000 - adjustment1) else BigInteger.ZERO )
+                            ?: return@swaploop,
                         output.amounts
                             .filter { it.unit.replace(".","") == asset2Unit}
                             .map { it.quantity }
