@@ -1,13 +1,57 @@
 package tech.edgx.prise.indexer.testutil
 
+import com.bloxbean.cardano.yaci.core.protocol.chainsync.messages.Point
+import com.google.gson.Gson
 import tech.edgx.prise.indexer.domain.DexPriceHistoryView
+import tech.edgx.prise.indexer.model.dex.Swap
 import tech.edgx.prise.indexer.util.Helpers
 import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStream
+import java.io.PrintWriter
 
 class TestHelpers {
     companion object {
+        /*
+            TIMESTAMPS:
+            01 Jan 24 -
+            Epoch timestamp: 1704067200
+            Timestamp in seconds: 1704067200
+            Date and time (GMT): Monday, 1 January 2024 00:00:00
+            SLOT: 1704067200-1591566291=112500909
+            Block nearest to slot: 112500909: BlockView(hash=d1c77b5e2de38cacf6b5ab723fe6681ad879ba3a5405e8e8aa74fa1c73b4a5d8, epoch=458, height=9746375, slot=112500883)
+
+            01 Jan 24: 0100
+            Epoch timestamp: 1704070800
+            Timestamp in milliseconds: 1704070800000
+            Date and time (GMT): Monday, 1 January 2024 01:00:00
+            Date and time (your time zone): Monday, 1 January 2024 09:00:00 GMT+08:00
+            SLOT:  1704070800-1591566291=112504509
+
+            01 Jan 24: 0010
+            Epoch timestamp: 1704067800
+            Date and time (GMT): Monday, 1 January 2024 00:10:00
+            SLOT:  1704067800-1591566291=112501509
+        */
+
+        val point_01Jan24 = Point(112500883, "d1c77b5e2de38cacf6b5ab723fe6681ad879ba3a5405e8e8aa74fa1c73b4a5d8")
+
+        /* block: https://cardanoscan.io/block/10645795 */
+        val point_01Aug24 = Point(130904071, "803e98218881f77e98681c4434897026304ce31ad16daa40be8909b90a58f4ed")
+
+        val slot_01Jan24 = 112500909L
+        val slot_01Jan24_0100 = 112504509L
+        val slot_01Jan24_0005 = 112501209L
+        val slot_01Jan24_0010 = 112501509L
+        val slot_01Jan24_0020 = 112502109L
+        val slot_02Jan24 = 112587309L
+        val slot_01Aug24 = 130904109L
+        val slot_01Aug24_0010 = 130904709L
+        val slot_01Aug24_0100 = 130907709L
+        val slot_01Aug24_0030 = 130905909L
+        val slot_02Aug24 = 130990509L
+        val slot_01Aug24_1200 = 130947309L
+
         var test_units_a: List<Pair<String,Int?>> = listOf<Pair<String,Int?>>(
             Pair("8e51398904a5d3fc129fbf4f1589701de23c7824d5c90fdb9490e15a434841524c4933", 6),
             Pair("533bb94a8850ee3ccbe483106489399112b74c905342cb1792a797a0494e4459", 6),
@@ -50,6 +94,14 @@ class TestHelpers {
 
         fun writeToCsv(vals: List<DexPriceHistoryView>?, filename: String) {
             FileOutputStream(filename).apply { writeDexPriceHistoriesCsv(vals) }
+        }
+
+        fun saveComputedSwaps(swaps: List<Swap>) {
+            // TEMP, just to speed up devtesting
+            val writer: PrintWriter = File("src/test/resources/testdata/sundaeswap/computed_swaps_0000Z01Jan24-0010Z01Jan24.json").printWriter()
+            writer.println(Gson().toJson(swaps))
+            writer.flush()
+            writer.close()
         }
     }
 }

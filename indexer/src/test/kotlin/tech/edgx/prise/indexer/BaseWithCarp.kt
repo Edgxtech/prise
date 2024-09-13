@@ -78,14 +78,14 @@ open class BaseWithCarp: KoinTest {
                     single(named(TokenMetadataServiceEnum.tokenRegistry.name)) { TokenRegistryService() } bind TokenMetadataService::class
 
                     single(named("dexClassifiers")) {
-                        listOf(WingridersClassifier, SundaeswapClassifier, MinswapClassifier, MinswapV2Classifier, SaturnswapClassifier)
+                        listOf(WingridersClassifier, SundaeswapClassifier, MinswapClassifier) //, MinswapV2Classifier)
                     }
 
                     /* For testing, define these individually */
                     single(named("wingridersClassifier")) { WingridersClassifier } bind DexClassifier::class
                     single(named("sundaeswapClassifier")) { SundaeswapClassifier } bind DexClassifier::class
                     single(named("minswapClassifier")) { MinswapClassifier } bind DexClassifier::class
-                    single(named("minswapV2Classifier")) { MinswapV2Classifier } bind DexClassifier::class
+                    //single(named("minswapV2Classifier")) { MinswapV2Classifier } bind DexClassifier::class
                 })
         }
         config = Configurer("src/test/resources/prise.withcarp.properties").configure()

@@ -23,9 +23,7 @@ import tech.edgx.prise.indexer.service.classifier.DexClassifier
 import tech.edgx.prise.indexer.service.classifier.module.*
 import tech.edgx.prise.indexer.service.dataprovider.ChainDatabaseService
 import tech.edgx.prise.indexer.service.dataprovider.TokenMetadataService
-import tech.edgx.prise.indexer.service.dataprovider.common.ChainDatabaseServiceEnum
 import tech.edgx.prise.indexer.service.dataprovider.common.TokenMetadataServiceEnum
-import tech.edgx.prise.indexer.service.dataprovider.module.carp.jdbc.CarpJdbcService
 import tech.edgx.prise.indexer.service.dataprovider.module.koios.KoiosService
 import tech.edgx.prise.indexer.service.dataprovider.module.tokenregistry.TokenRegistryService
 import tech.edgx.prise.indexer.service.monitoring.MonitoringService
@@ -59,7 +57,6 @@ open class Base: KoinTest {
                     single { AssetRepository(get()) }
                     single { AssetService(get()) }
                     single { ChainService(get()) }
-                    //single { CarpRepository(get()) }
                     single { LatestPriceService(get()) }
                     single { BaseCandleRepository(get()) }
                     single { CandleService(get()) }
@@ -70,21 +67,20 @@ open class Base: KoinTest {
                     single { HistoricalPriceService(get()) }
 
                     /* Choose one ChainDbService */
-                    //single(named(ChainDatabaseServiceEnum.carpJDBC.name)) { CarpJdbcService(get()) } bind ChainDatabaseService::class
                     single(named("koios")) { KoiosService(get()) } bind ChainDatabaseService::class
 
                     /* Choose one Token metadata service */
                     single(named(TokenMetadataServiceEnum.tokenRegistry.name)) { TokenRegistryService() } bind TokenMetadataService::class
 
                     single(named("dexClassifiers")) {
-                        listOf(WingridersClassifier, SundaeswapClassifier, MinswapClassifier, MinswapV2Classifier, SaturnswapClassifier)
+                        listOf(WingridersClassifier, SundaeswapClassifier, MinswapClassifier) //, MinswapV2Classifier)
                     }
 
                     /* For testing, define these individually */
                     single(named("wingridersClassifier")) { WingridersClassifier } bind DexClassifier::class
                     single(named("sundaeswapClassifier")) { SundaeswapClassifier } bind DexClassifier::class
                     single(named("minswapClassifier")) { MinswapClassifier } bind DexClassifier::class
-                    single(named("minswapV2Classifier")) { MinswapV2Classifier } bind DexClassifier::class
+                    //single(named("minswapV2Classifier")) { MinswapV2Classifier } bind DexClassifier::class
                 })
         }
         config = Configurer("src/test/resources/prise.withoutcarp.properties").configure()

@@ -46,7 +46,6 @@ object MinswapClassifier: DexClassifier {
 
     /* Pass this tx with all inputs, outputs, witnesses */
     override fun computeSwaps(txDTO: FullyQualifiedTxDTO) : List<Swap> {
-        val swaps = mutableListOf<Swap>()
         log.debug("Computing swaps for tx: ${txDTO.txHash}")
 
         val outputDatumPair = txDTO.outputUtxos
@@ -71,9 +70,6 @@ object MinswapClassifier: DexClassifier {
                                 ?: return listOf() // Metadata doesn't contain the asset unit, skip
         log.debug("Extracted asset 1: $asset1Unit, asset2 : $asset2Unit")
 
-
-        /* Minswap V1 */
-        // Operation info is contained in datum from inputs to the script
         val inputDatumPairsV1 = txDTO.inputUtxos
             .filter { ORDER_CREDENTIALS_V1.contains(Helpers.convertScriptAddressToPaymentCredential(it.address)) }
             .map { txOut ->
@@ -81,12 +77,7 @@ object MinswapClassifier: DexClassifier {
                 Pair(txOut, datum)
             }
         log.debug("Number of relevant inputs representing unique swaps, #: ${inputDatumPairsV1.size}")
-        val versionSpecificSwapsV1 = computeVersionSpecificSwaps(txDTO, inputDatumPairsV1, asset1Unit, asset2Unit, DexEnum.MINSWAP)
-        log.debug("V1 specific swaps: $versionSpecificSwapsV1")
-
-        swaps.addAll(versionSpecificSwapsV1)
-        log.debug("Computed swaps: $swaps")
-        return swaps
+        return computeVersionSpecificSwaps(txDTO, inputDatumPairsV1, asset1Unit, asset2Unit, DexEnum.MINSWAP)
     }
 
     fun computeVersionSpecificSwaps(txDTO: FullyQualifiedTxDTO, inputDatumPairs: List<Pair<TransactionOutput, PlutusData?>>, asset1Unit: String, asset2Unit: String, dex: DexEnum): List<Swap> {
@@ -115,10 +106,11 @@ object MinswapClassifier: DexClassifier {
 
             val output = txDTO.outputUtxos
                 ?.firstOrNull {
-                    log.debug("Comparing: ${it.address}, ${Helpers.convertScriptAddressToHex(it.address)} to $address")
+                    log.trace("Comparing address: ${it.address}, ${Helpers.convertScriptAddressToHex(it.address)} to $address")
                     Helpers.convertScriptAddressToHex(it.address) == address }?: return@swaploop
 
             val adjustment1 = lpInputDatumJsonNode.get("fields")?.get(4)?.get("int")?.asLong()?: return@swaploop
+            log.debug("Fee: $adjustment1")
 
             val amountOperationDTO = when (swapToAssetUnit == asset2Unit) {
                 true -> {
