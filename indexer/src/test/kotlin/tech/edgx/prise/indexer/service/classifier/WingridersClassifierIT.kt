@@ -17,9 +17,9 @@ import org.koin.core.parameter.parametersOf
 import org.koin.core.qualifier.named
 import org.koin.test.inject
 import tech.edgx.prise.indexer.model.dex.Swap
-import tech.edgx.prise.indexer.Base
 import tech.edgx.prise.indexer.BaseWithCarp
 import tech.edgx.prise.indexer.service.chain.ChainService
+import tech.edgx.prise.indexer.testutil.TestHelpers
 import tech.edgx.prise.indexer.util.Helpers
 import java.io.File
 import java.io.PrintWriter
@@ -33,13 +33,6 @@ class WingridersClassifierIT: BaseWithCarp() {
 
     val chainService: ChainService by inject { parametersOf(config) }
     val wingridersClassifier: DexClassifier by inject(named("wingridersClassifier"))
-
-    val point_01Jan24 = Point(112500883, "d1c77b5e2de38cacf6b5ab723fe6681ad879ba3a5405e8e8aa74fa1c73b4a5d8")
-    val slot_01Jan24 = 112500909L // 112500909
-    val slot_02Jan24 = 112587309L
-    val slot_01Jan24_0100 = 112504509L
-    val slot_01Jan24_0005 = 112501209L
-    val slot_01Jan24_0010 = 112501509L
 
     @Test
     fun computeSwaps_SingleTransaction_1() {
@@ -338,23 +331,9 @@ class WingridersClassifierIT: BaseWithCarp() {
     }
 
     @Test
-    fun computeSwaps_FromChainSync_5mins() {
-        /*
-            TIMESTAMPS:
-            01 Jan 24 - 0000
-            Epoch timestamp: 1704067200
-            Timestamp in seconds: 1704067200
-            Date and time (GMT): Monday, 1 January 2024 00:00:00
-            SLOT: 1704067200-1591566291=112500909
-            Block nearest to slot: 112500909: BlockView(hash=d1c77b5e2de38cacf6b5ab723fe6681ad879ba3a5405e8e8aa74fa1c73b4a5d8, epoch=458, height=9746375, slot=112500883)
-
-            01 Jan 24: 0010
-            Epoch timestamp: 1704067800
-            Date and time (GMT): Monday, 1 January 2024 00:10:00
-            SLOT:  1704067800-1591566291=112501509
-        */
-        val fromSlot = slot_01Jan24
-        val untilSlot = slot_01Jan24_0005
+    fun computeSwaps_FromChainSync_TimePeriod() {
+        val fromSlot = TestHelpers.slot_01Jan24
+        val untilSlot = TestHelpers.slot_01Jan24_0005
         val reader = File("src/test/resources/testdata/wingriders/swaps_0000Z01Jan24_0100Z01Jan24.csv")
             .readText(Charsets.UTF_8).byteInputStream().bufferedReader()
         reader.readLine()
@@ -371,7 +350,8 @@ class WingridersClassifierIT: BaseWithCarp() {
         // start sync from 01 Jan 24 and compute all swaps for the time period
         var allSwaps = mutableListOf<Swap>()
         val blockSync = BlockSync(config.cnodeAddress,  config.cnodePort!!, NetworkType.MAINNET.protocolMagic, Constants.WELL_KNOWN_MAINNET_POINT)
-        blockSync.startSync(point_01Jan24,
+        blockSync.startSync(
+            TestHelpers.point_01Jan24,
             object : BlockChainDataListener {
                 override fun onBlock(era: Era, block: Block, transactions: MutableList<Transaction>) {
                     println("Received Block >> ${block.header.headerBody.blockNumber}, ${block.header.headerBody.blockHash}, slot: ${block.header.headerBody.slot}, Txns # >> ${block.transactionBodies.size}")
@@ -416,12 +396,6 @@ class WingridersClassifierIT: BaseWithCarp() {
         // Sort them exactly the same way since multiple swaps per tx, and multiple tx per block
         val orderedComputedSwaps = allSwaps.sortedBy { it.slot }.sortedBy { it.txHash }.sortedBy { it.operation }.sortedBy { it.amount1 }.filter { it.slot < untilSlot }
         val orderedKnownSwaps = knownSwaps.sortedBy { it.slot }.sortedBy { it.txHash }.sortedBy { it.operation }.sortedBy { it.amount1 }
-
-        // TEMP, just to speed up devtesting
-        val writer: PrintWriter = File("src/test/resources/testdata/wingriders/computed_swaps_0000Z01Jan24-0005Z01Jan24.json").printWriter()
-        writer.println(Gson().toJson(orderedComputedSwaps))
-        writer.flush()
-        writer.close()
 
         println("Comparing known swaps #: ${orderedKnownSwaps.size} to computedSwaps #: ${orderedComputedSwaps.size}")
         assertEquals(orderedKnownSwaps.size, orderedComputedSwaps.size)

@@ -16,15 +16,15 @@ class SundaeswapClassifierTest {
     @Test
     fun computeSwap_SingleSwapSingleTransaction() {
         val swapTxHash = "0dd5f01748068cd6a3a65273159447bf38a9c78de04f28e4f8ad0465d384af6c"
-        val knownSwaps = listOf<Swap>(
+        val knownSwaps = listOf(
             Swap(swapTxHash, 112504002, 1, "lovelace", "682fe60c9918842b3323c43b5144bc3d52a23bd2fb81345560d73f634e45574d", BigInteger.valueOf(30556170), BigInteger.valueOf(2056039876), 0),
         )
-        val txDTOs: List<FullyQualifiedTxDTO> = Gson().fromJson<List<FullyQualifiedTxDTO>?>(
+        val txDTOs: List<FullyQualifiedTxDTO> = Gson().fromJson<List<FullyQualifiedTxDTO>>(
             File("src/test/resources/testdata/sundaeswap/transactions_qualified_from_block_112503994.json")
                 .readText(Charsets.UTF_8)
                 .byteInputStream()
                 .bufferedReader().readLine(),
-            object : TypeToken<ArrayList<FullyQualifiedTxDTO?>?>() {}.type)
+            object : TypeToken<ArrayList<FullyQualifiedTxDTO>>() {}.type)
             .filter { it.txHash == swapTxHash }
         val computedSwaps = SundaeswapClassifier.computeSwaps(txDTOs.first())
             .filter { it.dex == SundaeswapClassifier.DEX_CODE }
@@ -45,7 +45,7 @@ class SundaeswapClassifierTest {
     @Test
     fun computeSwap_TripleSwapSingleTransaction() {
         val swapTxHash = "589f59c70c314fca7fd9d8248d89cc9a16cdedd8dde2cfc6689e0b2bae84a6d3"
-        val knownSwaps = listOf<Swap>(
+        val knownSwaps = listOf(
             Swap("589f59c70c314fca7fd9d8248d89cc9a16cdedd8dde2cfc6689e0b2bae84a6d3", 112502077, 1, "lovelace", "94cbb4fcbcaa2975779f273b263eb3b5f24a9951e446d6dc4c13586452455655", BigInteger.valueOf(150000000), BigInteger.valueOf(565416591383), 0),
             Swap("589f59c70c314fca7fd9d8248d89cc9a16cdedd8dde2cfc6689e0b2bae84a6d3", 112502077, 1, "lovelace", "94cbb4fcbcaa2975779f273b263eb3b5f24a9951e446d6dc4c13586452455655", BigInteger.valueOf(99021655), BigInteger.valueOf(338406672751), 0),
             Swap("589f59c70c314fca7fd9d8248d89cc9a16cdedd8dde2cfc6689e0b2bae84a6d3", 112502077, 1, "lovelace", "94cbb4fcbcaa2975779f273b263eb3b5f24a9951e446d6dc4c13586452455655", BigInteger.valueOf(165772912), BigInteger.valueOf(585170875225), 1)
