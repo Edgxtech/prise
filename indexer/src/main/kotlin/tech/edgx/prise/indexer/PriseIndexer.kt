@@ -16,6 +16,7 @@ import tech.edgx.prise.indexer.service.CandleService
 import tech.edgx.prise.indexer.service.dataprovider.module.carp.jdbc.CarpJdbcService
 import tech.edgx.prise.indexer.service.chain.ChainService
 import tech.edgx.prise.indexer.service.classifier.module.MinswapClassifier
+import tech.edgx.prise.indexer.service.classifier.module.MinswapV2Classifier
 import tech.edgx.prise.indexer.service.classifier.module.SundaeswapClassifier
 import tech.edgx.prise.indexer.service.classifier.module.WingridersClassifier
 import tech.edgx.prise.indexer.service.dataprovider.ChainDatabaseService
@@ -60,7 +61,7 @@ val priseModules = module {
     single(named(TokenMetadataServiceEnum.tokenRegistry.name)) { TokenRegistryService() } bind TokenMetadataService::class
 
     single(named("dexClassifiers")) {
-        listOf(WingridersClassifier, SundaeswapClassifier, MinswapClassifier)
+        listOf(WingridersClassifier, SundaeswapClassifier, MinswapClassifier, MinswapV2Classifier)
     }
 }
 

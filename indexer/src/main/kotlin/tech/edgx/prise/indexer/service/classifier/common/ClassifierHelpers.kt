@@ -10,14 +10,9 @@ object ClassifierHelpers {
 
     /* Extract the bloxb client lib PlutusData related to the input */
     fun getPlutusDataFromOutput(output: TransactionOutput, transactionDatums: List<Datum>): PlutusData? {
-        // If there is plutusDatum inline, use it, otherwise, find the one in tx witness set matching the datum hash
         return when(output.inlineDatum!=null) {
             true -> {
-                PlutusData.deserialize(
-                    CborSerializationUtil.deserialize(
-                        HexUtil.decodeHexString(
-                    Datum(output.inlineDatum, null, null).cbor
-                )))
+                PlutusData.deserialize(CborSerializationUtil.deserialize(HexUtil.decodeHexString(output.inlineDatum)))
             }
             false -> {
                 transactionDatums.firstOrNull {
