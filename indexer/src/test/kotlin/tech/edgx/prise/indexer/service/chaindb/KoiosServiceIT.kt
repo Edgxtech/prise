@@ -2,7 +2,6 @@ package tech.edgx.prise.indexer.service.chaindb
 
 import com.bloxbean.cardano.yaci.core.model.TransactionInput
 import kotlinx.coroutines.runBlocking
-import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.koin.core.parameter.parametersOf
@@ -53,17 +52,31 @@ class KoiosServiceIT: Base() {
     }
 
     @Test
+    fun getInputUtxos_2() {
+        val txIns = setOf(
+            TransactionInput("1973d456714f3fc83fa02c6f3f9640290381ce82edbabd085ca06ca936ca64d7", 1)
+        )
+        val txOuts = runBlocking { koiosService.getInputUtxos(txIns) }
+        println("Retrieved txIn details, #: ${txOuts.size}, $txOuts")
+        assertTrue(txOuts.isNotEmpty())
+        assertTrue(txOuts[0].address.equals("addr1z84q0denmyep98ph3tmzwsmw0j7zau9ljmsqx6a4rvaau66j2c79gy9l76sdg0xwhd7r0c0kna0tycz4y5s6mlenh8pq777e2a"))
+        assertTrue(txOuts[0].amounts.filter { it.unit == "lovelace" }.map { it.quantity }.first().equals(BigInteger.valueOf(13723641057619L)))
+        assertTrue(txOuts[0].datumHash == "102ae3ed1483f3e98b3a18bfaf5367dc4e4e8de6a991e0079ed2fbe41002b5b4")
+        assertTrue(txOuts[0].inlineDatum == "d8799fd8799fd87a9f581c1eae96baf29e27682ea3f815aba361a0c6059d45e4bfbe95bbd2f44affffd8799f4040ffd8799f581c29d222ce763455e3d7a09a665ce554f00ac89d2e99a1a83d267170c6434d494eff1b00003ab15584f9871b00000c7b47c0262e1b0001195186ac7f08181e1864d8799f190d05ffd87980ff")
+        assertTrue(txOuts[0].scriptRef == null)
+        assertTrue(txOuts[0].amounts.size.equals(4))
+    }
+
+    @Test
     fun getBlockNearestToSlot() {
         val testCandleDate = Helpers.toNearestDiscreteDate(Duration.ofMinutes(15), LocalDateTime.of(2022, 1, 1, 0, 0, 0))
         val slot = testCandleDate.toEpochSecond(Helpers.zoneOffset) + Helpers.slotConversionOffset
         println("Getting block nearest to slot: $slot")
         val block = koiosService.getBlockNearestToSlot(slot)
         println("Block nearest to slot: $slot: $block")
-        assertEquals(block,null)
-        // NOT IMPLEMENTED, NOT AVAILABLE VIA KOIOS
-//        assertTrue(block?.hash.equals("af03c8d7813b2a68b5b0573fa598bb7c2838642790fcf679269426960e6d1487"))
-//        assertTrue(block?.height!!.equals(6698516L))
-//        assertTrue(block.slot.equals(49400102L))
-//        assertTrue(block.epoch.equals(311))
+        assertTrue(block?.hash.equals("af03c8d7813b2a68b5b0573fa598bb7c2838642790fcf679269426960e6d1487"))
+        assertTrue(block?.height!!.equals(6698516L))
+        assertTrue(block.slot.equals(49400102L))
+        assertTrue(block.epoch.equals(311))
     }
 }

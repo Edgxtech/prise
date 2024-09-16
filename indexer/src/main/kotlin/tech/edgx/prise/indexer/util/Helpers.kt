@@ -81,7 +81,6 @@ object Helpers {
             1 -> { return DexEnum.SUNDAESWAP.nativeName }
             2 -> { return DexEnum.MINSWAP.nativeName }
             3 -> { return DexEnum.MINSWAPV2.nativeName}
-            4 -> { return DexEnum.SATURNSWAP.nativeName}
         }
         throw Exception("No mapping for dex number $dexNumber")
     }
@@ -158,7 +157,6 @@ object Helpers {
             SundaeswapClassifier.POOL_SCRIPT_HASH -> DexEnum.SUNDAESWAP.code
             in MinswapClassifier.POOL_SCRIPT_HASHES -> DexEnum.MINSWAP.code
             in MinswapV2Classifier.POOL_SCRIPT_HASHES -> DexEnum.MINSWAPV2.code
-            in SaturnswapClassifier.POOL_SCRIPT_HASHES -> DexEnum.SATURNSWAP.code
             else -> -1
         }
     }

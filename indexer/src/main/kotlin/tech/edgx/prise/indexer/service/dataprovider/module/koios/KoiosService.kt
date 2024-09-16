@@ -6,6 +6,9 @@ import com.bloxbean.cardano.yaci.core.model.TransactionOutput
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
+import org.koin.core.parameter.parametersOf
+import org.koin.core.qualifier.named
 import org.slf4j.LoggerFactory
 import tech.edgx.prise.indexer.config.Config
 import tech.edgx.prise.indexer.domain.BlockView
@@ -19,16 +22,19 @@ import java.net.http.HttpResponse
 class KoiosService(private val config: Config) : KoinComponent, ChainDatabaseService {
     private val log = LoggerFactory.getLogger(javaClass)
 
+    val blockfrostService: ChainDatabaseService by inject(named("blockfrost")) { parametersOf(config) }
+
+    val client = HttpClient.newBuilder().build();
+
     override fun getBlockNearestToSlot(slot: Long): BlockView? {
-        log.warn("Not implemented")
-        return null
+        // Temporarily delegating to blockfrost until better solution is available
+        return blockfrostService.getBlockNearestToSlot(slot)
     }
 
     override fun getInputUtxos(txIns: Set<TransactionInput>): List<TransactionOutput> {
         val txInStringRefs = txIns.map { "${it.transactionId}#${it.index}" }
         val transactionOutputRequest = TransactionOutputRequest(txInStringRefs,true)
         val requestBody = Gson().toJson(transactionOutputRequest)
-        val client = HttpClient.newBuilder().build();
         val request = buildPostRequest(requestBody, "/utxo_info")
         log.debug("Koios request: $request, headers: ${request.headers()}, body: $requestBody")
         val response = client.send(request, HttpResponse.BodyHandlers.ofString());
@@ -49,7 +55,7 @@ class KoiosService(private val config: Config) : KoinComponent, ChainDatabaseSer
                     it.address,
                     amounts,
                     it.datum_hash,
-                    it.inline_datum,
+                    it.inline_datum?.bytes,
                     it.reference_script) }
     }
 

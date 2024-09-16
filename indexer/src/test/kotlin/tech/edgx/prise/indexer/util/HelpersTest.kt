@@ -73,4 +73,10 @@ class HelpersTest {
         println("Earliest: $earliestB")
         assertTrue(earliestB.equals(lastFifteenDate.minusMonths(1)))
     }
+
+    @Test
+    fun regexpMatchBlockfrostApiKey() {
+        val r = """^mainnet[A-Za-z0-9_-]{32}+""".toRegex()
+        assertTrue(r.matches("mainnet1234567890abcdefghijklmnopqrstuv"))
+    }
 }

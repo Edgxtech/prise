@@ -47,6 +47,9 @@ class Configurer(private val configFile: String?): KoinComponent {
         val KOIOS_DATASOURCE_URL_PROPERTY: String = "koios.datasource.url"
         val KOIOS_DATASOURCE_APIKEY_PROPERTY: String = "koios.datasource.apikey"
 
+        val BLOCKFROST_DATASOURCE_URL_PROPERTY: String = "blockfrost.datasource.url"
+        val BLOCKFROST_DATASOURCE_APIKEY_PROPERTY: String = "blockfrost.datasource.apikey"
+
         val CNODE_ADDRESS_PROPERTY: String = "cnode.address"
         val CNODE_PORT_PROPERTY: String = "cnode.port"
 
@@ -103,6 +106,15 @@ class Configurer(private val configFile: String?): KoinComponent {
                 !properties.getProperty(KOIOS_DATASOURCE_APIKEY_PROPERTY).isNullOrEmpty() &&
                 !"""^[A-Za-z0-9_-]{2,}(?:\.[A-Za-z0-9_-]{2,}){2}$""".toRegex().matches(properties.getProperty(KOIOS_DATASOURCE_APIKEY_PROPERTY))) {
                 throw ConfigurationException("Koios apikey format was invalid, check properties for: $KOIOS_DATASOURCE_APIKEY_PROPERTY")
+            }
+            if ((properties[CHAIN_DATABASE_SERVICE_MODULE_PROPERTY] == ChainDatabaseServiceEnum.blockfrost.name) &&
+                properties.getProperty(BLOCKFROST_DATASOURCE_URL_PROPERTY).isNullOrEmpty()) {
+                throw ConfigurationException("A required blockfrost property was not set, check properties for: $BLOCKFROST_DATASOURCE_URL_PROPERTY")
+            }
+            if (properties.getProperty(CHAIN_DATABASE_SERVICE_MODULE_PROPERTY) == ChainDatabaseServiceEnum.blockfrost.name &&
+                !properties.getProperty(BLOCKFROST_DATASOURCE_APIKEY_PROPERTY).isNullOrEmpty() &&
+                !"""^mainnet[A-Za-z0-9_-]{32}+""".toRegex().matches(properties.getProperty(BLOCKFROST_DATASOURCE_APIKEY_PROPERTY))) {
+                throw ConfigurationException("Blockfrost apikey format was invalid, check properties for: $BLOCKFROST_DATASOURCE_APIKEY_PROPERTY")
             }
             if (properties.getProperty(CNODE_ADDRESS_PROPERTY).isNullOrEmpty()) {
                 throw ConfigurationException("A required cardano node property was not set, check properties for: $CNODE_ADDRESS_PROPERTY")
@@ -184,6 +196,9 @@ class Configurer(private val configFile: String?): KoinComponent {
 
         config.koiosDatasourceUrl = properties.getProperty(KOIOS_DATASOURCE_URL_PROPERTY)
         config.koiosDatasourceApiKey = properties.getProperty(KOIOS_DATASOURCE_APIKEY_PROPERTY)
+
+        config.blockfrostDatasourceUrl = properties.getProperty(BLOCKFROST_DATASOURCE_URL_PROPERTY)
+        config.blockfrostDatasourceApiKey = properties.getProperty(BLOCKFROST_DATASOURCE_APIKEY_PROPERTY)
 
         config.startPointTime = properties.getProperty(START_POINT_TIME_PROPERTY)?.toLongOrNull()
 

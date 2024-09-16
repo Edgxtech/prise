@@ -23,6 +23,7 @@ import tech.edgx.prise.indexer.service.dataprovider.ChainDatabaseService
 import tech.edgx.prise.indexer.service.dataprovider.TokenMetadataService
 import tech.edgx.prise.indexer.service.dataprovider.common.ChainDatabaseServiceEnum
 import tech.edgx.prise.indexer.service.dataprovider.common.TokenMetadataServiceEnum
+import tech.edgx.prise.indexer.service.dataprovider.module.blockfrost.BlockfrostService
 import tech.edgx.prise.indexer.service.dataprovider.module.koios.KoiosService
 import tech.edgx.prise.indexer.service.dataprovider.module.tokenregistry.TokenRegistryService
 import tech.edgx.prise.indexer.service.monitoring.MonitoringService
@@ -56,6 +57,7 @@ val priseModules = module {
     /* Choose one ChainDbService */
     single(named(ChainDatabaseServiceEnum.carpJDBC.name)) { CarpJdbcService(get()) } bind ChainDatabaseService::class
     single(named(ChainDatabaseServiceEnum.koios.name)) { KoiosService(get()) } bind ChainDatabaseService::class
+    single(named(ChainDatabaseServiceEnum.blockfrost.name)) { BlockfrostService(get()) } bind ChainDatabaseService::class
 
     /* Choose one Token metadata service */
     single(named(TokenMetadataServiceEnum.tokenRegistry.name)) { TokenRegistryService() } bind TokenMetadataService::class

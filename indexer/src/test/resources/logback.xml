@@ -27,7 +27,7 @@
     <logger name="jdk.internal.reflect" level="WARN" />
     <logger name="org.ktorm" level="INFO" />
     <logger name="tech.edgx.prise.indexer" level="INFO" />
-    <logger name="tech.edgx.prise.indexer.service.classifier.module.MinswapClassifier" level="DEBUG"/>
+    <logger name="tech.edgx.prise.indexer.service.classifier.module" level="INFO"/>
 
     <root level="INFO">
         <appender-ref ref="STDOUT" />

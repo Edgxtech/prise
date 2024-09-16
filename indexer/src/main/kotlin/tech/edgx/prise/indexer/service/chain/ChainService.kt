@@ -248,7 +248,7 @@ class ChainService(private val config: Config) : KoinComponent {
             }.filter {
                 it.inputUtxos.isNotEmpty()
             }
-        log.debug("Number qualified tx: ${qualifiedTx.size}, ${qualifiedTx.map { it.txHash }}")
+        log.debug("Number qualified tx: ${qualifiedTx.size}, ${qualifiedTx.map { it.txHash +"," + it.dexCode }}")
         return qualifiedTx
     }
 }

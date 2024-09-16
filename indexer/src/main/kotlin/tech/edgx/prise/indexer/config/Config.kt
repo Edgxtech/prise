@@ -29,6 +29,9 @@ data class Config(
     var koiosDatasourceUrl: String? = null,
     var koiosDatasourceApiKey: String? = null,
 
+    var blockfrostDatasourceUrl: String? = null,
+    var blockfrostDatasourceApiKey: String? = null,
+
     var dexClassifiers: List<String>? = null,
 
     var cnodeAddress: String? = null,

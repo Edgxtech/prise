@@ -11,7 +11,7 @@ data class UtxoDetails (
     val block_height: Long,
     val block_time: Long,
     val datum_hash: String,
-    val inline_datum: String,
+    val inline_datum: InlineDatum?,
     val reference_script: String,
     val asset_list: List<Asset>,
     val is_spent: Boolean
@@ -23,4 +23,8 @@ data class Asset (
     val policy_id: String,
     val asset_name: String,
     val fingerprint: String
+)
+
+data class InlineDatum (
+    val bytes: String
 )
