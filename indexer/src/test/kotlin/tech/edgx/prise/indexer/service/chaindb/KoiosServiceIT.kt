@@ -4,11 +4,13 @@ import com.bloxbean.cardano.yaci.core.model.TransactionInput
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
+import org.junit.jupiter.api.assertThrows
 import org.koin.core.parameter.parametersOf
 import org.koin.core.qualifier.named
 import org.koin.test.inject
 import tech.edgx.prise.indexer.Base
 import tech.edgx.prise.indexer.service.dataprovider.ChainDatabaseService
+import tech.edgx.prise.indexer.util.ExternalProviderException
 import tech.edgx.prise.indexer.util.Helpers
 import java.math.BigInteger
 import java.time.Duration
@@ -65,6 +67,16 @@ class KoiosServiceIT: Base() {
         assertTrue(txOuts[0].inlineDatum == "d8799fd8799fd87a9f581c1eae96baf29e27682ea3f815aba361a0c6059d45e4bfbe95bbd2f44affffd8799f4040ffd8799f581c29d222ce763455e3d7a09a665ce554f00ac89d2e99a1a83d267170c6434d494eff1b00003ab15584f9871b00000c7b47c0262e1b0001195186ac7f08181e1864d8799f190d05ffd87980ff")
         assertTrue(txOuts[0].scriptRef == null)
         assertTrue(txOuts[0].amounts.size.equals(4))
+    }
+
+    @Test
+    fun getInputUtxos_3() {
+        val txIns = setOf(
+            TransactionInput("1973d456714f3fc83fa02c6f3f9640290381ce82edbabd085ca06ca936ca64d7", 10)
+        )
+        val txOuts = koiosService.getInputUtxos(txIns)
+        println("Retrieved txIn details, #: ${txOuts.size}, $txOuts")
+        assertTrue(txOuts.isEmpty())
     }
 
     @Test

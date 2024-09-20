@@ -5,6 +5,8 @@ import com.bloxbean.cardano.yaci.core.model.TransactionInput
 import com.bloxbean.cardano.yaci.core.model.TransactionOutput
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.koin.core.parameter.parametersOf
@@ -12,11 +14,14 @@ import org.koin.core.qualifier.named
 import org.slf4j.LoggerFactory
 import tech.edgx.prise.indexer.config.Config
 import tech.edgx.prise.indexer.domain.BlockView
+import tech.edgx.prise.indexer.domain.TransactionOutputView
 import tech.edgx.prise.indexer.service.dataprovider.ChainDatabaseService
+import tech.edgx.prise.indexer.util.ExternalProviderException
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
+import java.util.concurrent.TimeUnit
 
 /* NOT FULLY IMPLEMENTED */
 class KoiosService(private val config: Config) : KoinComponent, ChainDatabaseService {
@@ -24,7 +29,8 @@ class KoiosService(private val config: Config) : KoinComponent, ChainDatabaseSer
 
     val blockfrostService: ChainDatabaseService by inject(named("blockfrost")) { parametersOf(config) }
 
-    val client = HttpClient.newBuilder().build();
+    val client = HttpClient.newBuilder().build()
+    val MAX_ATTEMPTS = 500
 
     override fun getBlockNearestToSlot(slot: Long): BlockView? {
         // Temporarily delegating to blockfrost until better solution is available
@@ -37,14 +43,24 @@ class KoiosService(private val config: Config) : KoinComponent, ChainDatabaseSer
         val requestBody = Gson().toJson(transactionOutputRequest)
         val request = buildPostRequest(requestBody, "/utxo_info")
         log.debug("Koios request: $request, headers: ${request.headers()}, body: $requestBody")
-        val response = client.send(request, HttpResponse.BodyHandlers.ofString());
-        if (response.statusCode() != 200) {
-            log.warn("Couldn't get inputUTXOs, status: ${response.statusCode()}, message: ${response}")
-            return listOf()
+        var attempts = 0
+        var response: HttpResponse<String>
+        /* Koios may be unsynchronised or congested, try for MAX_ATTEMPTS then shutdown for rectification */
+        runBlocking {
+            do {
+                response = client.send(request, HttpResponse.BodyHandlers.ofString())
+                if (response.statusCode() != 200) {
+                    log.debug("Koios had error requesting utxos: $txIns")
+                    if (attempts==0 || attempts % 100 == 0) log.info("Koios had error requesting utxos... waiting ... attempts: $attempts")
+                    if (attempts >= MAX_ATTEMPTS) throw ExternalProviderException("Tried to get utxos from Koios ${MAX_ATTEMPTS} times and failed, exiting")
+                    attempts++
+                    delay(TimeUnit.SECONDS.toMillis(5))
+                }
+            } while (response.statusCode() != 200)
         }
         val utxos: List<UtxoDetails> = Gson().fromJson(response.body(), object : TypeToken<List<UtxoDetails>>() {}.type)
         val txInRefMap = utxos.associateBy { it.tx_hash+it.tx_index }
-        val sameOrderedUtxos = txIns.map { txInRefMap[it.transactionId+it.index]!! }
+        val sameOrderedUtxos = txIns.mapNotNull { txInRefMap[it.transactionId+it.index] }
         return sameOrderedUtxos
             .map {
                 val amounts: MutableList<Amount> = it.asset_list
