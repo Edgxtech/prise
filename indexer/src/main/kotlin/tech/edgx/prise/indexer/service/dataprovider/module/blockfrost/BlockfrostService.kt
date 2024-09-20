@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory
 import tech.edgx.prise.indexer.config.Config
 import tech.edgx.prise.indexer.domain.BlockView
 import tech.edgx.prise.indexer.service.dataprovider.ChainDatabaseService
+import tech.edgx.prise.indexer.util.ExternalProviderException
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -18,10 +19,13 @@ import java.net.http.HttpResponse
 class BlockfrostService(private val config: Config) : KoinComponent, ChainDatabaseService {
     private val log = LoggerFactory.getLogger(javaClass)
 
+    val MAX_BLOCK_BY_SLOT_ATTEMPTS = 250
+
     override fun getBlockNearestToSlot(slot: Long): BlockView? {
         // from provided time, calc abs slot, then count down 1 slot at a time until nearest block is found
         var block: BlockView?
         var slot = slot + 1
+        var attempts = 0
         runBlocking {
             do {
                 val client = HttpClient.newBuilder().build();
@@ -29,6 +33,8 @@ class BlockfrostService(private val config: Config) : KoinComponent, ChainDataba
                 log.debug("Blockfrost request: $request, headers: ${request.headers()}")
                 val response = client.send(request, HttpResponse.BodyHandlers.ofString());
                 block = Gson().fromJson(response.body(), BlockView::class.java)
+                if (attempts >= MAX_BLOCK_BY_SLOT_ATTEMPTS) throw ExternalProviderException("Tried to get block by slot $MAX_BLOCK_BY_SLOT_ATTEMPTS times and failed, exiting")
+                attempts++
             } while (block?.hash == null)
         }
         return block
