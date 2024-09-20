@@ -7,7 +7,9 @@
 
 Kotlin based indexer as used by: [https://realfi.info](https://realfi.info). Provides historical and latest prices for all Cardano Native Tokens (CNT). Uses;
 -   Bloxbean [Yaci](https://github.com/bloxbean/yaci) JVM based Cardano mini-protocols library
--   dcSpark [Carp](https://github.com/dcSpark/carp) general purpose indexer, only for txOutput resolution (modular, can be swapped)
+-   dcSpark [Carp](https://github.com/dcSpark/carp) general purpose indexer, only for txOutput resolution (modular option)
+-   Koios [Koios](https://api.koios.rest) Cardano data API, only for txOutput resolution (modular option)
+-   Koios [Blockfrost](https://blockfrost.io) Cardano data API, only for txOutput resolution (modular option)
 -   Cardano Foundation [Token Registry](https://github.com/cardano-foundation/cardano-token-registry) for CNT metadata (modular, can be swapped)
 -   Trades obtained from on-chain Cardano DEX data including Minswap V1/V2, Sundaeswap V1 and Wingriders (modular can be extended)
 -   Koin dependency injection
@@ -22,7 +24,7 @@ Kotlin based indexer as used by: [https://realfi.info](https://realfi.info). Pro
 
     cd indexer
     cp prise.example.properties prise.properties
-    ## Edit properties as needed; particularly database (x2) url + login and cardano-node (cnode) url
+    ## Edit properties as needed; particularly database (x2) url + login, cardano-node (cnode) url and API keys for any data API used
 
     mkdir /var/log/prise/
     chown -R <user>:<user> /var/log/prise
