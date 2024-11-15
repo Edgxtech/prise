@@ -50,6 +50,8 @@ class Configurer(private val configFile: String?): KoinComponent {
         val BLOCKFROST_DATASOURCE_URL_PROPERTY: String = "blockfrost.datasource.url"
         val BLOCKFROST_DATASOURCE_APIKEY_PROPERTY: String = "blockfrost.datasource.apikey"
 
+        val YACISTORE_DATASOURCE_URL_PROPERTY: String = "yacistore.datasource.url"
+
         val CNODE_ADDRESS_PROPERTY: String = "cnode.address"
         val CNODE_PORT_PROPERTY: String = "cnode.port"
 
@@ -115,6 +117,10 @@ class Configurer(private val configFile: String?): KoinComponent {
                 !properties.getProperty(BLOCKFROST_DATASOURCE_APIKEY_PROPERTY).isNullOrEmpty() &&
                 !"""^mainnet[A-Za-z0-9_-]{32}+""".toRegex().matches(properties.getProperty(BLOCKFROST_DATASOURCE_APIKEY_PROPERTY))) {
                 throw ConfigurationException("Blockfrost apikey format was invalid, check properties for: $BLOCKFROST_DATASOURCE_APIKEY_PROPERTY")
+            }
+            if ((properties[CHAIN_DATABASE_SERVICE_MODULE_PROPERTY] == ChainDatabaseServiceEnum.yacistore.name) &&
+                properties.getProperty(YACISTORE_DATASOURCE_URL_PROPERTY).isNullOrEmpty()) {
+                throw ConfigurationException("A required yacistore property was not set, check properties for: $YACISTORE_DATASOURCE_URL_PROPERTY")
             }
             if (properties.getProperty(CNODE_ADDRESS_PROPERTY).isNullOrEmpty()) {
                 throw ConfigurationException("A required cardano node property was not set, check properties for: $CNODE_ADDRESS_PROPERTY")
@@ -200,6 +206,8 @@ class Configurer(private val configFile: String?): KoinComponent {
         config.blockfrostDatasourceUrl = properties.getProperty(BLOCKFROST_DATASOURCE_URL_PROPERTY)
         config.blockfrostDatasourceApiKey = properties.getProperty(BLOCKFROST_DATASOURCE_APIKEY_PROPERTY)
 
+        config.yacistoreDatasourceUrl = properties.getProperty(YACISTORE_DATASOURCE_URL_PROPERTY)
+
         config.startPointTime = properties.getProperty(START_POINT_TIME_PROPERTY)?.toLongOrNull()
 
         config.cnodeAddress=properties.getProperty(CNODE_ADDRESS_PROPERTY)
@@ -220,6 +228,10 @@ class Configurer(private val configFile: String?): KoinComponent {
         }
         if (config.chainDatabaseServiceModule==ChainDatabaseServiceEnum.koios.name &&
             (config.koiosDatasourceUrl.isNullOrEmpty())) {
+            throw ConfigurationException("You selected chain db service ${config.chainDatabaseServiceModule} however didnt provide other configs needed")
+        }
+        if (config.chainDatabaseServiceModule==ChainDatabaseServiceEnum.yacistore.name &&
+            (config.yacistoreDatasourceUrl.isNullOrEmpty())) {
             throw ConfigurationException("You selected chain db service ${config.chainDatabaseServiceModule} however didnt provide other configs needed")
         }
     }

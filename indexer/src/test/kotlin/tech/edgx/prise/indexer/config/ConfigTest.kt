@@ -50,4 +50,16 @@ class ConfigTest {
         properties.load(input)
         assertDoesNotThrow { Configurer.validateProperties(properties) }
     }
+
+    @Test
+    fun validateProperties_5() {
+        val properties = Properties()
+        val input: InputStream = File("src/test/resources/prise.withoutcarp.properties").inputStream()
+        properties.load(input)
+        properties.setProperty(Configurer.CHAIN_DATABASE_SERVICE_MODULE_PROPERTY, ChainDatabaseServiceEnum.yacistore.name)
+        properties.setProperty(Configurer.YACISTORE_DATASOURCE_URL_PROPERTY, "")
+        assertThrows<ConfigurationException> { Configurer.validateProperties(properties) }
+        properties.setProperty(Configurer.YACISTORE_DATASOURCE_URL_PROPERTY, "koiosurl.com")
+        assertDoesNotThrow { Configurer.validateProperties(properties) }
+    }
 }

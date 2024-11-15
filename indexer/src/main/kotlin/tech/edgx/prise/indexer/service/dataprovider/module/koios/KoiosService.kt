@@ -14,7 +14,6 @@ import org.koin.core.qualifier.named
 import org.slf4j.LoggerFactory
 import tech.edgx.prise.indexer.config.Config
 import tech.edgx.prise.indexer.domain.BlockView
-import tech.edgx.prise.indexer.domain.TransactionOutputView
 import tech.edgx.prise.indexer.service.dataprovider.ChainDatabaseService
 import tech.edgx.prise.indexer.util.ExternalProviderException
 import java.net.URI
@@ -45,7 +44,7 @@ class KoiosService(private val config: Config) : KoinComponent, ChainDatabaseSer
         log.debug("Koios request: $request, headers: ${request.headers()}, body: $requestBody")
         var attempts = 0
         var response: HttpResponse<String>
-        /* Koios may be unsynchronised or congested, try for MAX_ATTEMPTS then shutdown for rectification */
+        /* May be unsynchronised or congested, try for MAX_ATTEMPTS then shutdown for rectification */
         runBlocking {
             do {
                 response = client.send(request, HttpResponse.BodyHandlers.ofString())

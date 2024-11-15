@@ -32,6 +32,8 @@ data class Config(
     var blockfrostDatasourceUrl: String? = null,
     var blockfrostDatasourceApiKey: String? = null,
 
+    var yacistoreDatasourceUrl: String? = null,
+
     var dexClassifiers: List<String>? = null,
 
     var cnodeAddress: String? = null,

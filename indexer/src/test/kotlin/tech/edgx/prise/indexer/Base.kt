@@ -28,6 +28,7 @@ import tech.edgx.prise.indexer.service.dataprovider.common.TokenMetadataServiceE
 import tech.edgx.prise.indexer.service.dataprovider.module.blockfrost.BlockfrostService
 import tech.edgx.prise.indexer.service.dataprovider.module.koios.KoiosService
 import tech.edgx.prise.indexer.service.dataprovider.module.tokenregistry.TokenRegistryService
+import tech.edgx.prise.indexer.service.dataprovider.module.yacistore.YaciStoreService
 import tech.edgx.prise.indexer.service.monitoring.MonitoringService
 import tech.edgx.prise.indexer.service.price.HistoricalPriceService
 import tech.edgx.prise.indexer.service.price.LatestPriceService
@@ -71,6 +72,7 @@ open class Base: KoinTest {
                     /* ChainDbService(s) */
                     single(named(ChainDatabaseServiceEnum.koios.name)) { KoiosService(get()) } bind ChainDatabaseService::class
                     single(named(ChainDatabaseServiceEnum.blockfrost.name)) { BlockfrostService(get()) } bind ChainDatabaseService::class
+                    single(named(ChainDatabaseServiceEnum.yacistore.name)) { YaciStoreService(get()) } bind ChainDatabaseService::class
 
                     /* Choose one Token metadata service */
                     single(named(TokenMetadataServiceEnum.tokenRegistry.name)) { TokenRegistryService() } bind TokenMetadataService::class
