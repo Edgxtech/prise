@@ -39,14 +39,13 @@ class YaciStoreService(private val config: Config) : KoinComponent, ChainDatabas
         val transactionOutputRequest = txIns.map { TransactionOutputRequest(it.transactionId, it.index) }
         val requestBody = Gson().toJson(transactionOutputRequest)
         val request = buildPostRequest(requestBody, "/api/v1/utxos")
-        log.debug("Yacistore request: $request, headers: ${request.headers()}, body: $requestBody")
+        log.trace("Yacistore request: $request, headers: ${request.headers()}, body: $requestBody")
         var attempts = 0
         var response: HttpResponse<String>
         /* May be unsynchronised or congested, try for MAX_ATTEMPTS then shutdown for rectification */
         runBlocking {
             do {
                 response = client.send(request, HttpResponse.BodyHandlers.ofString())
-                log.debug("Response status: ${response.statusCode()}")
                 if (!(response.statusCode() == 200 || response.statusCode()==404)) {
                     log.debug("Yacistore had error requesting utxos: $txIns")
                     if (attempts==0 || attempts % 100 == 0) log.info("Yacistore had error requesting utxos... waiting ... attempts: $attempts")

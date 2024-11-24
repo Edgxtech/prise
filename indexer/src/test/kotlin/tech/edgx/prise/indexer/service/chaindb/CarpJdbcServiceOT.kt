@@ -10,18 +10,15 @@ import org.koin.test.inject
 import tech.edgx.prise.indexer.repository.CarpRepository
 import tech.edgx.prise.indexer.BaseWithCarp
 import tech.edgx.prise.indexer.service.dataprovider.ChainDatabaseService
-import tech.edgx.prise.indexer.util.Helpers
 import java.math.BigInteger
-import java.time.Duration
-import java.time.LocalDateTime
 import java.util.*
 import kotlin.test.assertTrue
 
+/* Optional Test (OT), prevent from executing in surefire reports */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class CarpJdbcServiceIT: BaseWithCarp() {
+class CarpJdbcServiceOT: BaseWithCarp() {
 
     val carpJdbcService: ChainDatabaseService by inject(named("carpJDBC")) { parametersOf(config) }
-    val carpRepository: CarpRepository by inject { parametersOf(config.carpDatabase) }
 
     @Test
     fun getInputUtxos() {
@@ -98,16 +95,4 @@ class CarpJdbcServiceIT: BaseWithCarp() {
         assertTrue(block.slot.equals(115179314L))
         assertTrue(block.epoch.equals(464))
     }
-
-//    @Test
-//    fun getBlockNearestToSlot_SpecificDbNotYetSynced() {
-//        /* Tests runBlocking until db is synced */
-//        val latestBlock = carpRepository.getLatestBlock()
-//        println("latest block: $latestBlock")
-//        val futureSlot = latestBlock?.slot?.plus(20)
-//        println("Requesting block nearest to future slot: $futureSlot")
-//        val block = carpJdbcService.getBlockNearestToSlot(futureSlot!!)
-//        println("Block nearest to slot: $futureSlot: $block")
-//        assertTrue(block?.slot!! >= futureSlot)
-//    }
 }

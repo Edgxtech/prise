@@ -47,8 +47,10 @@ object Helpers {
     *  Jan 12, 2022 06:00:00, 1641967200 - chosen start point */
     val dexLaunchTime: Long = 1641967200
 
-    val dexLaunchAdjustedBlockHash: String = "aa937b19ea01809f00c51994f21ca02ccda03618806c265d9c605d4834c07595"
-    val dexLaunchAdjustedBlockSlot: Long = 50400919L
+//    val dexLaunchAdjustedBlockHash: String = "aa937b19ea01809f00c51994f21ca02ccda03618806c265d9c605d4834c07595"
+//    val dexLaunchAdjustedBlockSlot: Long = 50400919L
+    val dexLaunchAdjustedBlockHash: String = "2d5bf7d3f65a5b4ca8216ef05a3bd794a2350eaad327cf138f31e2238332edd7"
+    val dexLaunchAdjustedBlockSlot: Long = 50400895L
 
     val allResoDurations = HistoricalCandleResolutions.entries.map { convertResoDuration(it.code) }
     val smallestDuration = allResoDurations.min()

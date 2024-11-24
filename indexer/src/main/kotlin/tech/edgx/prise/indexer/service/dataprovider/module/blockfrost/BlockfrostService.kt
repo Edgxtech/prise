@@ -30,11 +30,11 @@ class BlockfrostService(private val config: Config) : KoinComponent, ChainDataba
     override fun getBlockNearestToSlot(slot: Long): BlockView? {
         // from provided time, calc abs slot, then count down 1 slot at a time until nearest block is found
         var block: BlockView?
-        var slot = slot + 1
+        var slotRequest = slot + 1
         var attempts = 0
         runBlocking {
             do {
-                val request = buildGetRequest("/blocks/slot/${--slot}")
+                val request = buildGetRequest("/blocks/slot/${--slotRequest}")
                 log.debug("Blockfrost request: $request, headers: ${request.headers()}")
                 val response = client.send(request, HttpResponse.BodyHandlers.ofString());
                 block = Gson().fromJson(response.body(), BlockView::class.java)

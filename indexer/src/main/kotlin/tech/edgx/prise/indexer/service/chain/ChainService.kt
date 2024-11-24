@@ -166,6 +166,7 @@ class ChainService(private val config: Config) : KoinComponent {
                 nearestPoint
             }
         }
+        log.info("Getting block nearest to slot: ${candleStartPoints[Helpers.smallestDuration]?.plus(Helpers.slotConversionOffset)}")
         /* Chain sync start point is the nearest block to the smallest resolution duration */
         val nearestBlock = candleStartPoints[Helpers.smallestDuration]?.plus(Helpers.slotConversionOffset)
             ?.let { chainDatabaseService.getBlockNearestToSlot(it) }

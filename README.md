@@ -7,9 +7,10 @@
 
 Kotlin based indexer as used by: [https://realfi.info](https://realfi.info). Provides historical and latest prices for all Cardano Native Tokens (CNT). Uses;
 -   Bloxbean [Yaci](https://github.com/bloxbean/yaci) JVM based Cardano mini-protocols library
+-   Blockbean [YaciStore](https://github.com/bloxbean/yaci-store) general purpose indexer, only for txOutput resolution (modular option)
 -   dcSpark [Carp](https://github.com/dcSpark/carp) general purpose indexer, only for txOutput resolution (modular option)
 -   Koios [Koios](https://api.koios.rest) Cardano data API, only for txOutput resolution (modular option)
--   Koios [Blockfrost](https://blockfrost.io) Cardano data API, only for txOutput resolution (modular option)
+-   Blockfrost [Blockfrost](https://blockfrost.io) Cardano data API, only for txOutput resolution (modular option)
 -   Cardano Foundation [Token Registry](https://github.com/cardano-foundation/cardano-token-registry) for CNT metadata (modular, can be swapped)
 -   Trades obtained from on-chain Cardano DEX data including Minswap V1/V2, Sundaeswap V1 and Wingriders (modular can be extended)
 -   Koin dependency injection
