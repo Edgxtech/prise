@@ -135,7 +135,6 @@ class MinswapV2ClassifierTest {
             .filter { swapAssetUnits.contains(it.asset2Unit) }
             .sortedBy { it.txHash }.sortedBy { it.amount1 }.sortedBy { it.amount2 }
 
-        println("Comparing # known swaps: ${orderedKnownSwaps.size} vs computed swaps: ${orderedComputedSwaps.size}")
         assertEquals(orderedKnownSwaps.size,orderedComputedSwaps.size)
         orderedKnownSwaps.zip(orderedComputedSwaps).forEach {
             println("Comparing: ${it.first} to ${it.second}")
@@ -150,11 +149,11 @@ class MinswapV2ClassifierTest {
         }
     }
 
+    /* type==4; DEPOSIT (i.e. ZapIn) */
     @Test
-    fun computeSwaps_SingleTransaction_Type4_Deposit() {
+    fun computeSwaps_ZapIn() {
         val txHash = "d3aba39861706b25c5a8c33ce48889be998405a55b646002ee2f085e5a9fcd14"
         val knownSwaps = listOf(
-            /* This gets filtered out since is type==4; DEPOSIT */
             // Orcfax Token, Buy , 0.026 ADA , 42.56296 ADA , 1,631.976871 FACT , addr...xpw0 , 2024-08-16 14:08 GMT+8
             Swap(txHash, 132222216, DexEnum.MINSWAPV2.code, "lovelace", "a3931691f5c4e65d01c429e473d0dd24c51afdb6daf88e632a6c1e516f7263666178746f6b656e", BigInteger.valueOf(42562960 ), BigInteger.valueOf(1631976871 ), DexOperationEnum.SELL.code),
         )
@@ -165,7 +164,7 @@ class MinswapV2ClassifierTest {
                 .byteInputStream()
                 .bufferedReader().use { it.readText() }, FullyQualifiedTxDTO::class.java)
 
-        val orderedKnownSwaps = filterSwapsByType(knownSwaps, listOf(txDTO), listOf(0))
+        val orderedKnownSwaps = filterSwapsByType(knownSwaps, listOf(txDTO), listOf(0, 4))
             .filter { swapAssetUnits.contains(it.asset2Unit)  }
             .sortedBy { it.txHash }.sortedBy { it.amount1 }.sortedBy { it.amount2 }
 
@@ -173,7 +172,6 @@ class MinswapV2ClassifierTest {
             .filter { swapAssetUnits.contains(it.asset2Unit)  }
             .sortedBy { it.txHash }.sortedBy { it.amount1 }.sortedBy { it.amount2 }
 
-        println("Comparing # known swaps: ${orderedKnownSwaps.size} vs computed swaps: ${orderedComputedSwaps.size}")
         assertEquals(orderedKnownSwaps.size,orderedComputedSwaps.size)
         orderedKnownSwaps.zip(orderedComputedSwaps).forEach {
             println("Comparing: ${it.first} to ${it.second}")
@@ -183,7 +181,106 @@ class MinswapV2ClassifierTest {
             assertTrue { it.first.asset1Unit == it.second.asset1Unit }
             assertTrue { it.first.asset2Unit == it.second.asset2Unit }
             assertTrue { it.first.amount1 == it.second.amount1 }
+            /* Discussions with Minswap confirmed the equations used are correct however the values taken from their
+               history page are v.slightly off and they may have roundings errors on UI, here we only check if the values are close */
+            assertTrue { (it.first.amount2 - it.second.amount2).abs() < BigInteger.valueOf(10) }
+            assertTrue { it.first.operation == it.second.operation }
+        }
+    }
+
+    /* type==4; DEPOSIT (i.e. ZapIn) however has a strange condition where amount2 resolves as 0 thus is correctly skipped */
+    @Test
+    fun computeSwap_ZapIn_2() {
+        val swapTxHash = "505bd29029f181a40f2e6d6c59a3628086d6161c358a59e08f0d253b90f8097b"
+        val knownSwaps: List<Swap> = listOf()
+        val swapAssetUnits = knownSwaps.map { it.asset2Unit }.toSet()
+
+        val txDTO: FullyQualifiedTxDTO = Gson().fromJson(
+            File("src/test/resources/testdata/${DexEnum.MINSWAPV2.nativeName}/transaction_qualified_$swapTxHash.json")
+                .readText(Charsets.UTF_8)
+                .byteInputStream()
+                .bufferedReader().use { it.readText() }, FullyQualifiedTxDTO::class.java)
+
+        val orderedKnownSwaps = knownSwaps
+            .filter { swapAssetUnits.contains(it.asset2Unit) }
+            .sortedBy { it.txHash }.sortedBy { it.amount1 }.sortedBy { it.amount2 }
+
+        val orderedComputedSwaps = MinswapV2Classifier.computeSwaps(txDTO)
+            .filter { it.dex == MinswapV2Classifier.DEX_CODE }
+
+        assertEquals(orderedKnownSwaps.size, orderedComputedSwaps.size)
+    }
+
+    @Test
+    fun computeSwap_ZapIn_3() {
+        val swapTxHash = "5a164d5248026e39dc14912eab0434af786001a2c38674c5a34e8cb601abd204"
+        val knownSwaps = listOf(
+            // CCCC - ADA, Sell , 0.07251 ADA, 11,952,952 CCCC, 0.301078 ADA , addr...8qp2 , 2024-11-21 10:51 GMT+8
+            Swap(txHash=swapTxHash, slot=140591196, dex=3, asset1Unit="lovelace", asset2Unit="ab3e31c490d248c592d5bb495823a45fd10f9c8e4f561f13551803fb43617264616e6f20436f6d6d756e697479204368617269747920436f696e", amount1=BigInteger.valueOf(301078), amount2=BigInteger.valueOf(11952952), operation=DexOperationEnum.BUY.code)
+        )
+        val swapAssetUnits = knownSwaps.map { it.asset2Unit }.toSet()
+
+        val txDTO: FullyQualifiedTxDTO = Gson().fromJson(
+            File("src/test/resources/testdata/${DexEnum.MINSWAPV2.nativeName}/transaction_qualified_$swapTxHash.json")
+                .readText(Charsets.UTF_8)
+                .byteInputStream()
+                .bufferedReader().use { it.readText() }, FullyQualifiedTxDTO::class.java)
+
+        val orderedKnownSwaps = knownSwaps
+            .filter { swapAssetUnits.contains(it.asset2Unit) }
+            .sortedBy { it.txHash }.sortedBy { it.amount1 }.sortedBy { it.amount2 }
+
+        val orderedComputedSwaps = MinswapV2Classifier.computeSwaps(txDTO)
+            .filter { it.dex == MinswapV2Classifier.DEX_CODE }
+
+        assertEquals(orderedKnownSwaps.size, orderedComputedSwaps.size)
+        orderedKnownSwaps.zip(orderedComputedSwaps).forEach {
+            println("Comparing: ${it.first} to ${it.second}")
+            assertTrue { it.first.txHash == it.second.txHash }
+            assertTrue { it.first.slot == it.second.slot }
+            assertTrue { it.first.dex == it.second.dex }
+            assertTrue { it.first.asset1Unit == it.second.asset1Unit }
+            assertTrue { it.first.asset2Unit == it.second.asset2Unit }
+            assertTrue { it.first.amount1 == it.second.amount1 }
             assertTrue { it.first.amount2 == it.second.amount2 }
+            assertTrue { it.first.operation == it.second.operation }
+        }
+    }
+
+    /* Example of ZapIn with two non-zero input amounts */
+    @Test
+    fun computeSwap_ZapIn_4() {
+        val swapTxHash = "f4d58892c029fd778982ea87c66a07c713c5a4975bbc1855ef637c143fc1553c"
+        val knownSwaps: List<Swap> = listOf(
+            //WMT - ADA, Buy, 0.503 ADA, 0.242164 ADA, 0.481323 WMT, addr...wyez, 2024-08-01 08:52 GMT+8
+            Swap(swapTxHash, 130907278L, DexEnum.MINSWAPV2.code, "lovelace", "1d7f33bd23d85e1a25d87d86fac4f199c3197a2f7afeb662a0f34e1e776f726c646d6f62696c65746f6b656e", BigInteger.valueOf(242164), BigInteger.valueOf(481323), DexOperationEnum.SELL.code),
+        )
+        val swapAssetUnits = knownSwaps.map { it.asset2Unit }.toSet()
+
+        val txDTO: FullyQualifiedTxDTO = Gson().fromJson(
+            File("src/test/resources/testdata/${DexEnum.MINSWAPV2.nativeName}/transaction_qualified_$swapTxHash.json")
+                .readText(Charsets.UTF_8)
+                .byteInputStream()
+                .bufferedReader().use { it.readText() }, FullyQualifiedTxDTO::class.java
+        )
+
+        val orderedKnownSwaps = knownSwaps
+            .filter { swapAssetUnits.contains(it.asset2Unit) }
+            .sortedBy { it.txHash }.sortedBy { it.amount1 }.sortedBy { it.amount2 }
+
+        val orderedComputedSwaps = MinswapV2Classifier.computeSwaps(txDTO)
+            .filter { it.dex == MinswapV2Classifier.DEX_CODE }
+
+        assertEquals(orderedKnownSwaps.size, orderedComputedSwaps.size)
+        orderedKnownSwaps.zip(orderedComputedSwaps).forEach {
+            println("Comparing: ${it.first} to ${it.second}")
+            assertTrue { it.first.txHash == it.second.txHash }
+            assertTrue { it.first.slot == it.second.slot }
+            assertTrue { it.first.dex == it.second.dex }
+            assertTrue { it.first.asset1Unit == it.second.asset1Unit }
+            assertTrue { it.first.asset2Unit == it.second.asset2Unit }
+            assertTrue { it.first.amount1 == it.second.amount1 }
+            assertTrue { (it.first.amount2 - it.second.amount2).abs() < BigInteger.valueOf(10) }
             assertTrue { it.first.operation == it.second.operation }
         }
     }
@@ -233,7 +330,6 @@ class MinswapV2ClassifierTest {
             Swap(txHash, 130934066, DexEnum.MINSWAPV2.code, "lovelace", "1d7f33bd23d85e1a25d87d86fac4f199c3197a2f7afeb662a0f34e1e776f726c646d6f62696c65746f6b656e", BigInteger.valueOf(35000000000 ), BigInteger.valueOf(70874166564 ), DexOperationEnum.BUY.code),
         )
         val swapAssetUnits = knownSwaps.map { it.asset2Unit }.toSet()
-        //val allComputedSwaps = mutableListOf<Swap>()
         val txDTO: FullyQualifiedTxDTO = Gson().fromJson(
             File("src/test/resources/testdata/${DexEnum.MINSWAPV2.nativeName}/transaction_qualified_$txHash.json")
                 .readText(Charsets.UTF_8)
@@ -318,6 +414,7 @@ class MinswapV2ClassifierTest {
             Swap("92da9170498a95b7e403e3ef60ae89d2dad8535df0a547b2fd54363d17b5dc55", 132289761, DexEnum.MINSWAPV2.code, "lovelace", "edfd7a1d77bcb8b884c474bdc92a16002d1fb720e454fa6e993444794e5458", BigInteger.valueOf(462216162 ), BigInteger.valueOf(5203442460 ), DexOperationEnum.BUY.code),
             // Buy, 0.0893 ADA, 14.278626 ADA, 159.734776 NTX, addr...ympe, 2024-08-17 01:14 GMT+8
             Swap("06759669c3ee355e72702949ad93f94e71477eefd075139cad6fdafd8ff8eaae", 132262197, DexEnum.MINSWAPV2.code, "lovelace", "edfd7a1d77bcb8b884c474bdc92a16002d1fb720e454fa6e993444794e5458", BigInteger.valueOf(14278626 ), BigInteger.valueOf(159734776 ), DexOperationEnum.SELL.code),
+            // Note: this txHash=505bd29029f181a40f2e6d6c59a3628086d6161c358a59e08f0d253b90f8097b qualifies as a ZapIn, however during amount calculations returns a zero and is correctly skipped
         )
         val swapAssetUnits = knownSwaps.map { it.asset2Unit }.toSet()
         val txDTOs: List<FullyQualifiedTxDTO> = Gson().fromJson(
@@ -335,6 +432,7 @@ class MinswapV2ClassifierTest {
             .sortedBy { it.txHash }.sortedBy { it.amount1 }.sortedBy { it.amount2 }
 
         println("Comparing # known swaps: ${orderedKnownSwaps.size} vs computed swaps: ${orderedComputedSwaps.size}")
+        println("COMPUTED SWAPS: $orderedComputedSwaps")
         assertEquals(orderedKnownSwaps.size,orderedComputedSwaps.size)
         orderedKnownSwaps.zip(orderedComputedSwaps).forEach {
             println("Comparing: ${it.first} to ${it.second}")
@@ -363,7 +461,7 @@ class MinswapV2ClassifierTest {
                 .byteInputStream()
                 .bufferedReader().use { it.readText() }, object : TypeToken<ArrayList<FullyQualifiedTxDTO>>() {}.type)
 
-        val orderedKnownSwaps = filterSwapsByType(knownSwaps, txDTOs, listOf(0))
+        val orderedKnownSwaps = filterSwapsByType(knownSwaps, txDTOs, listOf(0, 4))
             .filter { swapAssetUnits.contains(it.asset2Unit) }
             .sortedBy { it.txHash }.sortedBy { it.amount1 }.sortedBy { it.amount2 }
 
@@ -381,7 +479,10 @@ class MinswapV2ClassifierTest {
             assertTrue { it.first.asset1Unit == it.second.asset1Unit }
             assertTrue { it.first.asset2Unit == it.second.asset2Unit }
             assertTrue { it.first.amount1 == it.second.amount1 }
-            assertTrue { it.first.amount2 == it.second.amount2 }
+            when (it.first.txHash == "d3aba39861706b25c5a8c33ce48889be998405a55b646002ee2f085e5a9fcd14") {
+                true -> assertTrue { (it.first.amount2 - it.second.amount2).abs() < BigInteger.valueOf(10) }
+                else -> assertTrue { it.first.amount2 == it.second.amount2 }
+            }
             assertTrue { it.first.operation == it.second.operation }
         }
     }
