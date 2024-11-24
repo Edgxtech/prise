@@ -23,7 +23,7 @@ class GetLatestPricesValidator : Validator {
                 errors.rejectValue("network", "network.invalid")
             }
             if (form.symbol.size > 500) {
-                errors.rejectValue("asset_id", "asset_id.max")
+                errors.rejectValue("symbol", "symbol.max")
             }
             for (asset_id in form.symbol) {
                 // Simple pattern check, not ideal for prod: symbol should be a unit. >56 chars and hex
@@ -31,10 +31,10 @@ class GetLatestPricesValidator : Validator {
                 val unit_matcher = unit_pattern.matcher(asset_id)
                 try {
                     if (!unit_matcher.matches() && asset_id != Helpers.ADA_ASSET_UNIT) {
-                        errors.rejectValue("asset_id", "asset_id.invalid")
+                        errors.rejectValue("symbol", "symbol.invalid")
                     }
                 } catch (e: Exception) {
-                    errors.rejectValue("asset_id", "asset_id.invalid")
+                    errors.rejectValue("symbol", "symbol.invalid")
                 }
             }
         }

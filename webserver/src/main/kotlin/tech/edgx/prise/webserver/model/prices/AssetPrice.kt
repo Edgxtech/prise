@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonInclude
 import java.util.*
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
-class AssetPrice(
+data class AssetPrice(
     var symbol: String,
     var name: String,
     var last_price_usd: Double?,

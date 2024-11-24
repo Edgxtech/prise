@@ -1,6 +1,5 @@
 package tech.edgx.prise.webserver.controller
 
-import com.google.gson.Gson
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
@@ -46,10 +45,9 @@ class ApiController {
     @Resource(name = "priceService")
     lateinit var priceService: PriceService
 
-
     @RequestMapping(value = ["/symbols"], method = [RequestMethod.GET], produces = [MediaType.APPLICATION_JSON_VALUE])
     @ResponseBody
-    fun getDistinctSymbols(): ResponseEntity<Set<String>?>? {
+    fun getDistinctSymbols(): ResponseEntity<Set<String>> {
         return ResponseEntity.ok(assetService.getDistinctSymbols())
     }
 
@@ -59,12 +57,10 @@ class ApiController {
     @Throws(Exception::class)
     fun getLatestPrices(latestPricesRequest: LatestPricesRequest, getPricesErrors: BindingResult): ResponseEntity<LatestPricesResponse?>? {
         getLatestPricesValidator.validate(latestPricesRequest, getPricesErrors)
-        log.debug("Form: " + Gson().toJson(latestPricesRequest) + ", Has errors: " + getPricesErrors.hasErrors())
+        log.debug("Form: $latestPricesRequest, Has errors: ${getPricesErrors.hasErrors()}")
         if (!getPricesErrors.hasErrors()) {
-            val response = LatestPricesResponse()
             val assetPrices: List<AssetPrice>? = assetService.getCNTPriceList(latestPricesRequest.symbol)
-            response.date=Date()
-            response.assets=assetPrices ?: listOf()
+            val response = LatestPricesResponse(date=Date(), assets=assetPrices ?: listOf())
             log.debug("Returning Prices data, #: ${assetPrices?.size}")
             return ResponseEntity.ok<LatestPricesResponse>(response)
         } else {
@@ -78,13 +74,13 @@ class ApiController {
     @ResponseBody
     @Throws(Exception::class)
     fun getHistoricalPrices(priceHistoryRequest: PriceHistoryRequest, errors: BindingResult): ResponseEntity<List<Candle?>> {
-        log.debug("Submitted form: " + Gson().toJson(priceHistoryRequest))
-        getHistoricalPricesValidator.validate(priceHistoryRequest, errors);
+        log.debug("Submitted form: $priceHistoryRequest")
+        getHistoricalPricesValidator.validate(priceHistoryRequest, errors)
         return if (!errors.hasErrors()) {
             // NOTE: The order here is first == oldest, last == newest, compatible with TV charts
             val candles = priceService.getCandles(priceHistoryRequest)
             log.debug("Returning # candles: ${candles?.size}")
-            return ResponseEntity.ok(candles)
+            ResponseEntity.ok(candles)
         } else {
             throw InvalidRequestException(errors)
         }
@@ -96,7 +92,7 @@ class ApiController {
     @ResponseBody
     @Throws(Exception::class)
     fun getHistoricalClosingPrices(priceHistoryRequest: PriceHistoryRequest, errors: BindingResult): ResponseEntity<List<Close?>> {
-        log.debug("Submitted form: " + Gson().toJson(priceHistoryRequest))
+        log.debug("Submitted form: $priceHistoryRequest")
         getHistoricalPricesValidator.validate(priceHistoryRequest, errors);
         return if (!errors.hasErrors()) {
             val closes = priceService.getCloses(priceHistoryRequest)

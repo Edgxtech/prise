@@ -26,7 +26,7 @@ class PriceServiceImpl : PriceService {
     fun determineDateFromTo(priceHistoryRequest: PriceHistoryRequest): Array<Long?> {
         var to: Long? = Date().time / 1000
         val from = if (priceHistoryRequest.from != null) {
-            priceHistoryRequest.to
+            priceHistoryRequest.from
         } else {
             // start at the first known dex launch/trading date
             dexLaunchDate.toEpochSecond(zoneOffset)

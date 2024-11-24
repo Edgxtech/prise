@@ -3,7 +3,6 @@ package tech.edgx.prise.webserver.validator
 import org.apache.commons.logging.LogFactory
 import org.springframework.stereotype.Component
 import org.springframework.validation.Errors
-import org.springframework.validation.ValidationUtils
 import org.springframework.validation.Validator
 import tech.edgx.prise.webserver.model.prices.PriceHistoryRequest
 import java.util.*
@@ -18,8 +17,8 @@ class GetHistoricalPricesValidator : Validator {
 
     override fun validate(target: Any, errors: Errors) {
         val form: PriceHistoryRequest = target as PriceHistoryRequest
-        ValidationUtils.rejectIfEmptyOrWhitespace(errors, "symbol", "symbol.required")
-        ValidationUtils.rejectIfEmptyOrWhitespace(errors, "resolution", "resolution.required")
+        if (form.symbol.isEmpty()) errors.rejectValue("symbol", "symbol.required")
+        if (form.resolution.isEmpty()) errors.rejectValue("resolution", "resolution.required")
         if (!errors.hasErrors()) {
             // Simple pattern check, not ideal for prod: symbol should be a unit. >56 chars and hex
             val unit_pattern = Pattern.compile("^\\p{XDigit}{56,500}+$")
