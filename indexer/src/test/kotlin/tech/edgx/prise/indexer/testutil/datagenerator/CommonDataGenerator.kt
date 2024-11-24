@@ -16,6 +16,7 @@ import org.koin.test.inject
 import org.slf4j.LoggerFactory
 import tech.edgx.prise.indexer.model.FullyQualifiedTxDTO
 import tech.edgx.prise.indexer.Base
+import tech.edgx.prise.indexer.model.DexEnum
 import tech.edgx.prise.indexer.service.chain.ChainService
 import tech.edgx.prise.indexer.service.classifier.module.WingridersClassifier
 import tech.edgx.prise.indexer.testutil.TransactionBodyExcludeStrategy
@@ -26,6 +27,70 @@ class CommonDataGenerator: Base() {
     private val log = LoggerFactory.getLogger(javaClass)
     val transactionBodyGson: Gson = GsonBuilder().addDeserializationExclusionStrategy(TransactionBodyExcludeStrategy()).create()
     val chainService: ChainService by inject { parametersOf(config) }
+
+    @Ignore
+    @Test
+    fun saveSpecificQualifiedTransactionToJson() {
+        //val txHash = "fa30415a3d5e336b80d940d880461bcf19cd1c63b2981ccbe51c1f30557feb82"; val txSlot = 132239546L
+        //val txHash = "d3aba39861706b25c5a8c33ce48889be998405a55b646002ee2f085e5a9fcd14"; val txSlot = 132222216L
+        //val txHash = "bee485180e6ae05af621ac0e560fbfaf57b8563f81e95b960930129d12ecdd94"; val txSlot = 132476966L
+        //val txHash = "e0b5b5e5d18878c9b502c0d39f9b813d6fc0f2ace3e2dbb98bd97ee19c298872"; val txSlot = 132459047L
+        //val txHash = "592ac794f7ea60aba502b44aa436178626bef087ce7f05bf4a53dbd1456287be"; val txSlot = 132219880L
+        //val txHash = "fa30415a3d5e336b80d940d880461bcf19cd1c63b2981ccbe51c1f30557feb82"; val txSlot = 132239546L
+        //val txHash = "72875a21809e7c75d0e98e4751171eafc66847dc2614fa70208cfc067d565d90"; val txSlot = 116200902L
+        //val txHash = "b02042417e8fa4e2386b0e47c85e3f2d18e3483196c861767758ccba52e75730"; val txSlot = 116978969L
+        //val txHash = "3cae4bea2849f1cc8546a96058320f0deb949289cbd58295cfc7f50dab71f15a"; val txSlot = 112501470L
+//        val txHash = "24983065abb54ff66368fda2c32372325bac4a1320452fd7643210699e76c6ae"; val txSlot = 130934066L
+        //val txHash = "d3aba39861706b25c5a8c33ce48889be998405a55b646002ee2f085e5a9fcd14"; val txSlot = 132222216L
+        //val txHash = "269a8408bb1d47087a164267fcc6488dd65754d31b9c0f1547e63d6850ed35a4"; val txSlot = 132208958L
+        //val txHash = "505bd29029f181a40f2e6d6c59a3628086d6161c358a59e08f0d253b90f8097b"; val txSlot = 132266099L
+        //val txHash = "5a164d5248026e39dc14912eab0434af786001a2c38674c5a34e8cb601abd204"
+        val txHash = "f4d58892c029fd778982ea87c66a07c713c5a4975bbc1855ef637c143fc1553c"
+        val dexName = DexEnum.MINSWAPV2.nativeName
+        /** Need to update this as block prior to block containing requested tx **/
+        val startPoint = Point(130907257, "240689ad58ebc9dcb58da3af6a60fd423d28600c30ad21b443ea56cc39c2e14e")
+
+        val outputFile = "src/test/resources/testdata/$dexName/transaction_qualified_${txHash}.json"
+
+        val writer: PrintWriter = File(outputFile).printWriter()
+        var processedBlock = false
+        val blockStreamer = BlockStreamer.fromPoint(
+            config.cnodeAddress,
+            config.cnodePort!!,
+            startPoint,
+            NetworkType.MAINNET.n2NVersionTable
+        )
+        val blockFlux = blockStreamer.stream()
+        val subscription = blockFlux.subscribe { block: Block ->
+            log.info("Received Block >> ${block.header.headerBody.blockNumber}, ${block.header.headerBody.blockHash}, slot: ${block.header.headerBody.slot}, Txns # >> ${block.transactionBodies.size}")
+            val qualifiedTx = chainService.qualifyTransactions(
+                block.header.headerBody.slot,
+                block.transactionBodies,
+                block.transactionWitness
+            )
+            val filteredDexSpecificTx = qualifiedTx
+                .firstOrNull { it.txHash == txHash }
+            println("Found transactions for DEX #: ${filteredDexSpecificTx}")
+
+            if (filteredDexSpecificTx != null) {
+                writer.println(Gson().toJson(filteredDexSpecificTx))
+                writer.flush()
+                writer.close()
+
+            }
+            processedBlock = true
+        }
+        runBlocking {
+            while (true) {
+                if (processedBlock) {
+                    break
+                }
+                delay(100)
+            }
+            subscription.dispose()
+            blockStreamer.shutdown()
+        }
+    }
 
     /* Helper. Generate raw blocks for reuse in testing */
     @Ignore

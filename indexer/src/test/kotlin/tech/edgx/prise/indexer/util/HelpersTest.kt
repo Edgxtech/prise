@@ -47,7 +47,7 @@ class HelpersTest {
         assertTrue(Helpers.getDexName(1) == DexEnum.SUNDAESWAP.nativeName)
         assertTrue(Helpers.getDexName(2) == DexEnum.MINSWAP.nativeName)
         assertTrue(Helpers.getDexName(3) == DexEnum.MINSWAPV2.nativeName)
-        assertTrue(Helpers.getDexName(4) == DexEnum.SATURNSWAP.nativeName)
+        assertThrows(Exception::class.java) { Helpers.getDexName(4) }
         assertThrows(Exception::class.java) { Helpers.getDexName(5) }
         assertThrows(Exception::class.java) { Helpers.getDexName(-1) }
     }
