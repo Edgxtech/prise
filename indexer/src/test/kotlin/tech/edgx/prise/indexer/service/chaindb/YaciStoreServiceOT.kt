@@ -16,8 +16,9 @@ import java.time.LocalDateTime
 import java.util.*
 import kotlin.test.assertTrue
 
+/* Optional Test (OT), prevent from executing in surefire reports since is optional module */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class YaciStoreServiceIT: Base() {
+class YaciStoreServiceOT: Base() {
 
     val yaciStoreService: ChainDatabaseService by inject(named("yacistore")) { parametersOf(config) }
 

@@ -25,6 +25,7 @@ Kotlin based indexer as used by: [https://realfi.info](https://realfi.info). Pro
 
     cd indexer
     cp prise.example.properties prise.properties
+    cp prise.example.properties src/test/resources/prise.properties
     ## Edit properties as needed; particularly database (x2) url + login, cardano-node (cnode) url and API keys for any data API used
 
     mkdir /var/log/prise/

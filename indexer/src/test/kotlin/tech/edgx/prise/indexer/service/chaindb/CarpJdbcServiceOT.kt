@@ -7,14 +7,13 @@ import org.junit.jupiter.api.TestInstance
 import org.koin.core.parameter.parametersOf
 import org.koin.core.qualifier.named
 import org.koin.test.inject
-import tech.edgx.prise.indexer.repository.CarpRepository
 import tech.edgx.prise.indexer.BaseWithCarp
 import tech.edgx.prise.indexer.service.dataprovider.ChainDatabaseService
 import java.math.BigInteger
 import java.util.*
 import kotlin.test.assertTrue
 
-/* Optional Test (OT), prevent from executing in surefire reports */
+/* Optional Test (OT), prevent from executing in surefire reports since is optional module */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class CarpJdbcServiceOT: BaseWithCarp() {
 

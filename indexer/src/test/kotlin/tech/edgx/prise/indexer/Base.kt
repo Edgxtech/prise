@@ -88,6 +88,6 @@ open class Base: KoinTest {
                     single(named("minswapV2Classifier")) { MinswapV2Classifier } bind DexClassifier::class
                 })
         }
-        config = Configurer("src/test/resources/prise.withoutcarp.properties").configure()
+        config = Configurer("src/test/resources/prise.properties").configure()
     }
 }

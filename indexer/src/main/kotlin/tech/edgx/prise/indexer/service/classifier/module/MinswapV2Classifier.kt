@@ -135,7 +135,7 @@ object MinswapV2Classifier: DexClassifier {
                     .reduceOrNull { a, b -> a.plus(b) }?: return null
                 log.debug("Input ADA: $inputADA, outputADA: $outputADA")
                 AmountOperationDTO(
-                    inputADA.minus(outputADA)?.minus(BigInteger.valueOf(fee))?: return null,
+                    inputADA.minus(outputADA).minus(BigInteger.valueOf(fee)),
                     output.amounts
                         .filter { it.unit.replace(".","") == asset2Unit}
                         .map { it.quantity }

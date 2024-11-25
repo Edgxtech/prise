@@ -196,8 +196,6 @@ class Configurer(private val configFile: String?): KoinComponent {
 
             val database = Database.connect(config.carpDataSource as HikariDataSource)
             config.carpDatabase = database
-        } else {
-            println("CARP PROPERTIES NOT ENTERED")
         }
 
         config.koiosDatasourceUrl = properties.getProperty(KOIOS_DATASOURCE_URL_PROPERTY)

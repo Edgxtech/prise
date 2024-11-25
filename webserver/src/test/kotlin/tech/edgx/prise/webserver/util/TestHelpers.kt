@@ -11,10 +11,14 @@ object TestHelpers {
 
     @Suppress("UNCHECKED_CAST")
     fun <T> getProp(key: String): T {
-        val props  = javaClass.classLoader.getResourceAsStream("application.properties").use {
-            Properties().apply { load(it) }
+        val properties = Properties()
+        javaClass.classLoader.getResourceAsStream("application.properties").use {
+            properties.load(it)
         }
-        return (props.getProperty(key) as T) ?: throw RuntimeException("could not find property $key")
+        javaClass.classLoader.getResourceAsStream("application-default.properties").use {
+            properties.load(it)
+        }
+        return (properties.getProperty(key) as T) ?: throw RuntimeException("could not find property $key")
     }
 
     fun populateDatabaseWithTestData() {
