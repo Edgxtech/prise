@@ -1,5 +1,7 @@
 package tech.edgx.prise.webserver.controller
 
+import io.swagger.annotations.ApiImplicitParam
+import io.swagger.annotations.ApiImplicitParams
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
@@ -53,6 +55,9 @@ class ApiController {
 
     @ApiResponses(value = [ApiResponse(responseCode = "400", description = "Bad request", content = [Content()])])
     @RequestMapping(value = ["/prices/latest"], method = [RequestMethod.GET], produces = [MediaType.APPLICATION_JSON_VALUE])
+    @ApiImplicitParams(
+        ApiImplicitParam(name = "symbol", required = false, allowMultiple = true, paramType = "query", dataType = "array")
+    )
     @ResponseBody
     @Throws(Exception::class)
     fun getLatestPrices(latestPricesRequest: LatestPricesRequest, getPricesErrors: BindingResult): ResponseEntity<LatestPricesResponse?>? {
