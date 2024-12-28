@@ -77,6 +77,7 @@ class BlockfrostServiceIT: Base() {
     @Test
     fun getBlockNearestToSlot() {
         val slot = 49400103L
+        //val slot = 130904109L //1722470400L
         println("Getting block nearest to slot: $slot")
         val block = blockfrostService.getBlockNearestToSlot(slot)
         println("Block nearest to slot: $slot: $block")

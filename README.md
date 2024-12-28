@@ -36,6 +36,11 @@ Kotlin based indexer as used by: [https://realfi.info](https://realfi.info). Pro
     cp prise.example.properties src/test/resources/prise.properties
     ## Edit properties as needed; particularly database (x2) url + login, cardano-node (cnode) url and API keys for any data API used
 
+    ## It is necessary to have JAVA_HOME env variable set for the indexer to run, othewise you may see a 'Java Directory not found' type of error
+    ## On Linux Java home is likely in /usr/lib/jvm/, On MacOS likely in ~/Library/Java/JavaVirtualMachines/
+    ## Also suggest adding this export to your terminal profile, e.g. one of; ~/.bashrc, ~/zprofile, ~/.bash_profile
+    export JAVA_HOME=<Your Java Install>
+
 ## Build
 
     cd indexer
