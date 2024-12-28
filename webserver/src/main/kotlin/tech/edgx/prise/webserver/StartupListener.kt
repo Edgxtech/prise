@@ -14,7 +14,7 @@ class StartupListener {
 
     @EventListener
     fun handleContextRefresh(event: ContextRefreshedEvent) {
-        log.info("Active profiles: ${env.activeProfiles}")
+        log.info("Active profiles: ${env.activeProfiles.toList()}")
     }
 
     companion object {
