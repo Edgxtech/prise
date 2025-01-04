@@ -306,7 +306,7 @@
         <dependency>
             <groupId>com.bloxbean.cardano</groupId>
             <artifactId>yaci</artifactId>
-            <version>0.3.0-beta12</version>
+            <version>0.3.4.1</version>
         </dependency>
         <dependency>
             <groupId>io.insert-koin</groupId>
