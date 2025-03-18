@@ -53,3 +53,5 @@ db_backups/
 k8s/
 slt
 sltdata/
+
+.gradle/

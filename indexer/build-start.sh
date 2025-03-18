@@ -1,3 +1,4 @@
 #!/bin/bash
-mvn clean install -DskipTests
-mvn exec:exec -Dconfig=prise.properties
+
+./gradlew clean build -x test
+java -jar build/libs/indexer-0.0.1.jar -config prise.properties

@@ -42,14 +42,21 @@ Kotlin based indexer as used by: [https://realfi.info](https://realfi.info). Pro
     ## Also suggest adding this export to your terminal profile, e.g. one of; ~/.bashrc, ~/zprofile, ~/.bash_profile
     export JAVA_HOME=<Your Java Install>
 
-## Build
+## Build & Run with Gradle
 
-    cd indexer
-    mvn clean install -DskipTests
+```bash
+cd indexer
+gradle clean build -x test
+java -jar build/libs/indexer-0.0.1.jar -config prise.properties
+```
 
-## Run
+## Build & Run with Maven
 
-    mvn exec:exec -Dconfig=prise.properties
+```bash
+cd indexer
+mvn clean install -DskipTests
+mvn exec:exec -Dconfig=prise.properties
+```
 
 ## Configs
 ####    prise.properties - app configuration
