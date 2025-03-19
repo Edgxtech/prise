@@ -20,8 +20,99 @@ import javax.naming.ConfigurationException
 class Configurer(private val configFile: String?): KoinComponent {
     private val log = LoggerFactory.getLogger(javaClass::class.java)
 
-    companion object {
+    fun configure(): Config {
+        val config = Config()
+        val properties = Properties()
+        log.info("Using config: ${configFile?: "prise.properties"}")
+        val input: InputStream = File(configFile?: "prise.properties").inputStream()
+        properties.load(input)
+        if (properties.isNullOrEmpty()) throw ConfigurationException("Trouble loading properties, no properties found")
+        validateProperties(properties)
 
+        config.runMode = RunMode.valueOf(properties.getProperty(RUN_MODE_PROPERTY))
+
+        config.latestPricesLivesyncUpdateIntervalSeconds = properties.getProperty(LATEST_PRICES_UPDATE_INTERVAL_PROPERTY).toLong()
+
+        config.makeHistoricalData = properties.getProperty(MAKE_HISTORICAL_DATA_PROPERTY).toBoolean()
+
+        config.startMetricsServer = properties.getProperty(START_METRICS_SERVER_PROPERTY).toBoolean()
+        config.metricsServerPort = properties.getProperty(METRICS_SERVER_PORT_PROPERTY).toInt()
+
+        config.appDatasourceUrl=properties.getProperty(APP_DB_URL_PROPERTY)
+        config.appDatasourceUsername=properties.getProperty(APP_DB_UNAME_PROPERTY)
+        config.appDatasourcePassword=properties.getProperty(APP_DB_PASS_PROPERTY)
+        config.appDatasourceDriverClassName=properties.getProperty(APP_DB_DRIVER_PROPERTY)
+        println("DB: ${config.appDatasourceUrl}, ${config.appDatasourceUsername}, ${config.appDatasourcePassword}")
+
+        val appDbConfig = HikariConfig().apply {
+            jdbcUrl         = config.appDatasourceUrl
+            driverClassName = config.appDatasourceDriverClassName
+            username        = config.appDatasourceUsername
+            password        = config.appDatasourcePassword
+            maximumPoolSize = 10
+        }
+        config.appDataSource = HikariDataSource(appDbConfig)
+        val appDatabase = Database.connect(config.appDataSource as HikariDataSource)
+        config.appDatabase = appDatabase
+
+        config.chainDatabaseServiceModule=properties.getProperty(CHAIN_DATABASE_SERVICE_MODULE_PROPERTY)
+
+        // TODO, if (config.chainDatabaseServiceModule==ChainDatabaseServiceEnum.carpJDBC.name)
+        if (!properties.getProperty(CARP_DB_URL_PROPERTY).isNullOrEmpty()) {
+            config.carpDatasourceUrl = properties.getProperty(CARP_DB_URL_PROPERTY)
+            config.carpDatasourceUsername = properties.getProperty(CARP_DB_UNAME_PROPERTY)
+            config.carpDatasourcePassword = properties.getProperty(CARP_DB_PASS_PROPERTY)
+            config.carpDatasourceDriverClassName = properties.getProperty(CARP_DB_DRIVER_PROPERTY)
+            val carpDbConfig = HikariConfig().apply {
+                jdbcUrl = config.carpDatasourceUrl
+                driverClassName = config.carpDatasourceDriverClassName
+                username = config.carpDatasourceUsername
+                password = config.carpDatasourcePassword
+                maximumPoolSize = 3
+            }
+            config.carpDataSource = HikariDataSource(carpDbConfig)
+
+            val database = Database.connect(config.carpDataSource as HikariDataSource)
+            config.carpDatabase = database
+        }
+
+        config.koiosDatasourceUrl = properties.getProperty(KOIOS_DATASOURCE_URL_PROPERTY)
+        config.koiosDatasourceApiKey = properties.getProperty(KOIOS_DATASOURCE_APIKEY_PROPERTY)
+
+        config.blockfrostDatasourceUrl = properties.getProperty(BLOCKFROST_DATASOURCE_URL_PROPERTY)
+        config.blockfrostDatasourceApiKey = properties.getProperty(BLOCKFROST_DATASOURCE_APIKEY_PROPERTY)
+
+        config.yacistoreDatasourceUrl = properties.getProperty(YACISTORE_DATASOURCE_URL_PROPERTY)
+
+        config.startPointTime = properties.getProperty(START_POINT_TIME_PROPERTY)?.toLongOrNull()
+
+        config.cnodeAddress=properties.getProperty(CNODE_ADDRESS_PROPERTY)
+        config.cnodePort=properties.getProperty(CNODE_PORT_PROPERTY).toInt()
+
+        config.dexClassifiers = properties.getProperty(DEX_CLASSIFIERS_PROPERTY)
+            .split(",")
+        println("Dex classifiers from config: ${config.dexClassifiers}")
+
+        validateConfig(config)
+        return config
+    }
+
+    private fun validateConfig(config: Config) {
+        val dexClassifiers: List<DexClassifier> by inject(named("dexClassifiers"))
+        if (dexClassifiers.isNullOrEmpty()) {
+            throw ConfigurationException("No dex classifiers found, check defined modules")
+        }
+        if (config.chainDatabaseServiceModule==ChainDatabaseServiceEnum.koios.name &&
+            (config.koiosDatasourceUrl.isNullOrEmpty())) {
+            throw ConfigurationException("You selected chain db service ${config.chainDatabaseServiceModule} however didnt provide other configs needed")
+        }
+        if (config.chainDatabaseServiceModule==ChainDatabaseServiceEnum.yacistore.name &&
+            (config.yacistoreDatasourceUrl.isNullOrEmpty())) {
+            throw ConfigurationException("You selected chain db service ${config.chainDatabaseServiceModule} however didnt provide other configs needed")
+        }
+    }
+
+    companion object {
         val RUN_MODE_PROPERTY: String = "run.mode"
 
         val LATEST_PRICES_UPDATE_INTERVAL_PROPERTY: String = "latest.prices.livesync.update.interval.seconds"
@@ -140,97 +231,6 @@ class Configurer(private val configFile: String?): KoinComponent {
                         properties.getProperty(START_POINT_TIME_PROPERTY).toLong() < 0L)) {
                 throw ConfigurationException("You selected invalid $START_POINT_TIME_PROPERTY: ${properties.getProperty(START_POINT_TIME_PROPERTY)}")
             }
-        }
-    }
-
-    fun configure(): Config {
-        var config = Config()
-        val properties = Properties()
-        log.info("Using config: ${configFile?: "prise.properties"}")
-        val input: InputStream = File(configFile?: "prise.properties").inputStream()
-        properties.load(input)
-        if (properties.isNullOrEmpty()) throw ConfigurationException("Trouble loading properties, no properties found")
-        validateProperties(properties)
-
-        config.runMode = RunMode.valueOf(properties.getProperty(RUN_MODE_PROPERTY))
-
-        config.latestPricesLivesyncUpdateIntervalSeconds = properties.getProperty(LATEST_PRICES_UPDATE_INTERVAL_PROPERTY).toLong()
-
-        config.makeHistoricalData = properties.getProperty(MAKE_HISTORICAL_DATA_PROPERTY).toBoolean()
-
-        config.startMetricsServer = properties.getProperty(START_METRICS_SERVER_PROPERTY).toBoolean()
-        config.metricsServerPort = properties.getProperty(METRICS_SERVER_PORT_PROPERTY).toInt()
-
-        config.appDatasourceUrl=properties.getProperty(APP_DB_URL_PROPERTY)
-        config.appDatasourceUsername=properties.getProperty(APP_DB_UNAME_PROPERTY)
-        config.appDatasourcePassword=properties.getProperty(APP_DB_PASS_PROPERTY)
-        config.appDatasourceDriverClassName=properties.getProperty(APP_DB_DRIVER_PROPERTY)
-
-        val appDbConfig = HikariConfig().apply {
-            jdbcUrl         = config.appDatasourceUrl
-            driverClassName = config.appDatasourceDriverClassName
-            username        = config.appDatasourceUsername
-            password        = config.appDatasourcePassword
-            maximumPoolSize = 10
-        }
-        config.appDataSource = HikariDataSource(appDbConfig)
-        val appDatabase = Database.connect(config.appDataSource as HikariDataSource)
-        config.appDatabase = appDatabase
-
-        config.chainDatabaseServiceModule=properties.getProperty(CHAIN_DATABASE_SERVICE_MODULE_PROPERTY)
-
-        // TODO, if (config.chainDatabaseServiceModule==ChainDatabaseServiceEnum.carpJDBC.name)
-        if (!properties.getProperty(CARP_DB_URL_PROPERTY).isNullOrEmpty()) {
-            config.carpDatasourceUrl = properties.getProperty(CARP_DB_URL_PROPERTY)
-            config.carpDatasourceUsername = properties.getProperty(CARP_DB_UNAME_PROPERTY)
-            config.carpDatasourcePassword = properties.getProperty(CARP_DB_PASS_PROPERTY)
-            config.carpDatasourceDriverClassName = properties.getProperty(CARP_DB_DRIVER_PROPERTY)
-            val carpDbConfig = HikariConfig().apply {
-                jdbcUrl = config.carpDatasourceUrl
-                driverClassName = config.carpDatasourceDriverClassName
-                username = config.carpDatasourceUsername
-                password = config.carpDatasourcePassword
-                maximumPoolSize = 3
-            }
-            config.carpDataSource = HikariDataSource(carpDbConfig)
-
-            val database = Database.connect(config.carpDataSource as HikariDataSource)
-            config.carpDatabase = database
-        }
-
-        config.koiosDatasourceUrl = properties.getProperty(KOIOS_DATASOURCE_URL_PROPERTY)
-        config.koiosDatasourceApiKey = properties.getProperty(KOIOS_DATASOURCE_APIKEY_PROPERTY)
-
-        config.blockfrostDatasourceUrl = properties.getProperty(BLOCKFROST_DATASOURCE_URL_PROPERTY)
-        config.blockfrostDatasourceApiKey = properties.getProperty(BLOCKFROST_DATASOURCE_APIKEY_PROPERTY)
-
-        config.yacistoreDatasourceUrl = properties.getProperty(YACISTORE_DATASOURCE_URL_PROPERTY)
-
-        config.startPointTime = properties.getProperty(START_POINT_TIME_PROPERTY)?.toLongOrNull()
-
-        config.cnodeAddress=properties.getProperty(CNODE_ADDRESS_PROPERTY)
-        config.cnodePort=properties.getProperty(CNODE_PORT_PROPERTY).toInt()
-
-        config.dexClassifiers = properties.getProperty(DEX_CLASSIFIERS_PROPERTY)
-            .split(",")
-        println("Dex classifiers from config: ${config.dexClassifiers}")
-
-        validateConfig(config)
-        return config
-    }
-
-    private fun validateConfig(config: Config) {
-        val dexClassifiers: List<DexClassifier> by inject(named("dexClassifiers"))
-        if (dexClassifiers.isNullOrEmpty()) {
-            throw ConfigurationException("No dex classifiers found, check defined modules")
-        }
-        if (config.chainDatabaseServiceModule==ChainDatabaseServiceEnum.koios.name &&
-            (config.koiosDatasourceUrl.isNullOrEmpty())) {
-            throw ConfigurationException("You selected chain db service ${config.chainDatabaseServiceModule} however didnt provide other configs needed")
-        }
-        if (config.chainDatabaseServiceModule==ChainDatabaseServiceEnum.yacistore.name &&
-            (config.yacistoreDatasourceUrl.isNullOrEmpty())) {
-            throw ConfigurationException("You selected chain db service ${config.chainDatabaseServiceModule} however didnt provide other configs needed")
         }
     }
 }
