@@ -40,6 +40,7 @@ build/
 
 *.properties
 !prise.example.properties
+!prise.example.docker.properties
 !application.properties
 !messages.properties
 !environment.properties

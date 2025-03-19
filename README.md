@@ -42,10 +42,13 @@ Kotlin based indexer as used by: [https://realfi.info](https://realfi.info). Pro
     ## Also suggest adding this export to your terminal profile, e.g. one of; ~/.bashrc, ~/zprofile, ~/.bash_profile
     export JAVA_HOME=<Your Java Install>
 
-## Build & Run with Gradle
+## Build & Run Indexer with Gradle
 
 ```bash
 cd indexer
+```
+
+```bash
 gradle clean build -x test
 java -jar build/libs/indexer-0.0.1.jar -config prise.properties
 ```
@@ -53,9 +56,21 @@ java -jar build/libs/indexer-0.0.1.jar -config prise.properties
 ## Build & Run with Maven
 
 ```bash
-cd indexer
 mvn clean install -DskipTests
 mvn exec:exec -Dconfig=prise.properties
+```
+
+## Build & Run with Docker
+
+```bash
+gradle clean build -x test
+cp prise.example.docker.properties prise.docker.properties
+## Edit prise.docker.properties as needed; particularly database (x2) url + login, cardano-node (cnode) url and API keys for any data API used
+## Note: to work with the docker-compose.yaml provided, app.datasource.url must stay as "jdbc:mysql://mysql:3306/prise"
+## Modify ./db/secrets/mysql_* with your customisations
+docker build -t prise/indexer --build-arg PROPERTIES=prise.docker.properties .
+docker-compose up -d
+docker-compose logs -f
 ```
 
 ## Configs
