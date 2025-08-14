@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory
 import tech.edgx.prise.indexer.model.DexEnum
 import tech.edgx.prise.indexer.model.DexOperationEnum
 import tech.edgx.prise.indexer.model.FullyQualifiedTxDTO
-import tech.edgx.prise.indexer.model.dex.Swap
+import tech.edgx.prise.indexer.model.dex.SwapDTO
 import tech.edgx.prise.indexer.service.classifier.DexClassifier
 import tech.edgx.prise.indexer.service.classifier.common.ClassifierHelpers
 import tech.edgx.prise.indexer.service.classifier.common.DexClassifierEnum
@@ -50,7 +50,7 @@ object MinswapV2Classifier: DexClassifier {
     }
 
     /* Pass this tx with all inputs, outputs, witnesses */
-    override fun computeSwaps(txDTO: FullyQualifiedTxDTO) : List<Swap> {
+    override fun computeSwaps(txDTO: FullyQualifiedTxDTO) : List<SwapDTO> {
         log.debug("Computing swaps for tx: ${txDTO.txHash}")
 
         val poolDatumPair = txDTO.inputUtxos
@@ -102,7 +102,7 @@ object MinswapV2Classifier: DexClassifier {
         return swaps
     }
 
-    fun computeSwapExactIn(lpInputDatumJsonNode: JsonNode, txDTO: FullyQualifiedTxDTO, input: TransactionOutput, asset1Unit: String, asset2Unit: String): Swap? {
+    fun computeSwapExactIn(lpInputDatumJsonNode: JsonNode, txDTO: FullyQualifiedTxDTO, input: TransactionOutput, asset1Unit: String, asset2Unit: String): SwapDTO? {
         val minswapSwapDirection = lpInputDatumJsonNode.get("fields")?.get(6)?.get("fields")?.get(0)?.get("constructor")?.asInt()?: return null
         log.debug("Minswap Swap Direction: $minswapSwapDirection")
 
@@ -164,21 +164,21 @@ object MinswapV2Classifier: DexClassifier {
             return null
         }
 
-        val swap = Swap(
+        val swapDTO = SwapDTO(
             txDTO.txHash,
             txDTO.blockSlot,
             getDexCode(),
             asset1Unit,
             asset2Unit,
-            amountOperationDTO.amount1,
-            amountOperationDTO.amount2,
+            amountOperationDTO.amount1.toBigDecimal(),
+            amountOperationDTO.amount2.toBigDecimal(),
             amountOperationDTO.swapDirection
         )
-        log.debug("Computed swap: $swap")
-        return swap
+        log.debug("Computed swap: $swapDTO")
+        return swapDTO
     }
 
-    fun computeZapIn(poolDatumJsonNode: JsonNode, lpInputDatumJsonNode: JsonNode, txDTO: FullyQualifiedTxDTO, asset1Unit: String, asset2Unit: String): Swap? {
+    fun computeZapIn(poolDatumJsonNode: JsonNode, lpInputDatumJsonNode: JsonNode, txDTO: FullyQualifiedTxDTO, asset1Unit: String, asset2Unit: String): SwapDTO? {
         val totalLiquidity = poolDatumJsonNode.get("fields")?.get(3)?.get("int")?.asLong()?.toBigInteger()?: return null
         val reserveIn = poolDatumJsonNode.get("fields")?.get(4)?.get("int")?.asLong()?.toBigInteger()?: return null
         val reserveOut = poolDatumJsonNode.get("fields")?.get(5)?.get("int")?.asLong()?.toBigInteger()?: return null
@@ -221,18 +221,18 @@ object MinswapV2Classifier: DexClassifier {
             return null
         }
 
-        val swap = Swap(
+        val swapDTO = SwapDTO(
             txDTO.txHash,
             txDTO.blockSlot,
             getDexCode(),
             asset1Unit,
             asset2Unit,
-            amountOperationDTO.amount1,
-            amountOperationDTO.amount2,
+            amountOperationDTO.amount1.toBigDecimal(),
+            amountOperationDTO.amount2.toBigDecimal(),
             amountOperationDTO.swapDirection
         )
-        log.debug("Computed swap: $swap")
-        return swap
+        log.debug("Computed swap: $swapDTO")
+        return swapDTO
     }
 
     fun calculateSwapAmounts(amountA: BigInteger, amountB: BigInteger, reserveIn: BigInteger, reserveOut: BigInteger, tradingFee: BigInteger): Pair<BigInteger,BigInteger> {

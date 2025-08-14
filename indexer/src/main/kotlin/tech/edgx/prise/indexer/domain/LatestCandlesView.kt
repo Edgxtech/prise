@@ -1,7 +1,8 @@
 package tech.edgx.prise.indexer.domain
 
 data class LatestCandlesView(
-    val symbol: String,
+    val asset_id: Long,
+    val quote_asset_id: Long,
     val time: Long,
     val open: Double?,
     val high: Double?,

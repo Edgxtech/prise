@@ -1,10 +1,10 @@
 package tech.edgx.prise.webserver.model.prices
 
 import com.fasterxml.jackson.annotation.JsonFormat
-import java.util.*
+import java.time.LocalDateTime
 
 data class LatestPricesResponse(
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssZ")
-    var date: Date,
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    var date: LocalDateTime,
     var assets: List<AssetPrice>
 )

@@ -8,18 +8,16 @@ import com.bloxbean.cardano.yaci.core.model.TransactionOutput
 import kotlinx.coroutines.*
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
-import org.koin.core.parameter.parametersOf
 import org.slf4j.LoggerFactory
-import tech.edgx.prise.indexer.config.Config
 import tech.edgx.prise.indexer.domain.*
 import tech.edgx.prise.indexer.repository.CarpRepository
 import tech.edgx.prise.indexer.service.dataprovider.ChainDatabaseService
 import java.util.concurrent.TimeUnit
 
-class CarpJdbcService(config: Config) : KoinComponent, ChainDatabaseService {
+class CarpJdbcService() : KoinComponent, ChainDatabaseService {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    val carpRepository: CarpRepository by inject { parametersOf(config.carpDatabase) }
+    val carpRepository: CarpRepository by inject()
 
     override fun getBlockNearestToSlot(slot: Long): BlockView? {
         var block: BlockView?

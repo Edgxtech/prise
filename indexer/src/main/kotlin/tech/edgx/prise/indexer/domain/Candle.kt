@@ -5,10 +5,11 @@ import org.ktorm.entity.Entity
 interface Candle : Entity<Candle>, BasicCandle {
     companion object : Entity.Factory<Candle>()
     override val time: Long
-    override val symbol: String
-    override val open: Double?
-    override val high: Double?
-    override val low: Double?
-    override val close: Double?
-    override val volume: Double
+    override val asset_id: Long
+    override val quote_asset_id: Long
+    override val open: Float?
+    override val high: Float?
+    override val low: Float?
+    override val close: Float?
+    override val volume: Float
 }

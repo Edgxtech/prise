@@ -1,37 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<included>
-    <appender name="FILE"
-              class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>/var/log/prise/prise.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>/var/log/prise/prise.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
-            <timeBasedFileNamingAndTriggeringPolicy
-                    class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
-                <maxFileSize>50MB</maxFileSize>
-            </timeBasedFileNamingAndTriggeringPolicy>
-            <maxHistory>50</maxHistory>
-        </rollingPolicy>
-
+<configuration>
+    <!-- Console appender for Spring-like output -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%d{HH:mm:ss.SSS} [%level] [%class{25}.%M %L] %msg%n</pattern>
+            <pattern>%d{HH:mm:ss.SSS} %-5level [%15.15thread] %-40.40logger{39}.%L : %msg%n%ex</pattern>
+            <charset>UTF-8</charset>
         </encoder>
     </appender>
 
-    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder>
-            <pattern>%d{HH:mm:ss.SSS} [%level] [%class{25}.%M %L] %msg%n</pattern>
-        </encoder>
-    </appender>
-
+    <!-- Specific logger levels -->
     <logger name="com.zaxxer.hikari" level="WARN" />
     <logger name="jdk.internal.reflect" level="WARN" />
     <logger name="org.ktorm" level="INFO" />
     <logger name="com.bloxbean" level="INFO" />
     <logger name="com.bloxbean.cardano.yaci.core" level="WARN" />
-    <logger name="tech.edgx.prise.indexer" level="INFO" />
+    <logger name="tech.edgx.prise.indexer" level="DEBUG" />
 
+    <!-- Root logger -->
     <root level="INFO">
-        <appender-ref ref="STDOUT" />
-        <appender-ref ref="FILE" />
+        <appender-ref ref="CONSOLE" />
     </root>
-</included>
+</configuration>

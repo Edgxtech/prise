@@ -1,7 +1,9 @@
 package tech.edgx.prise.indexer
 
+import com.github.benmanes.caffeine.cache.Cache
+import com.github.benmanes.caffeine.cache.Caffeine
+import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
-import kotlinx.coroutines.runBlocking
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.koin.core.context.GlobalContext.startKoin
@@ -9,12 +11,23 @@ import org.koin.core.parameter.parametersOf
 import org.koin.core.qualifier.named
 import org.koin.dsl.bind
 import org.koin.dsl.module
+import org.ktorm.database.Database
+import org.slf4j.LoggerFactory
+import tech.edgx.prise.indexer.config.Config
 import tech.edgx.prise.indexer.config.Configurer
+import tech.edgx.prise.indexer.domain.Asset
+import tech.edgx.prise.indexer.event.EventBus
+import tech.edgx.prise.indexer.event.EventDispatcher
+import tech.edgx.prise.indexer.event.EventPublisher
+import tech.edgx.prise.indexer.event.NoOpEventPublisher
+import tech.edgx.prise.indexer.event.RedisEventPublisher
+import tech.edgx.prise.indexer.processor.PersistenceService
+import tech.edgx.prise.indexer.processor.PriceProcessor
+import tech.edgx.prise.indexer.processor.SwapProcessor
 import tech.edgx.prise.indexer.repository.*
-import tech.edgx.prise.indexer.service.AssetService
-import tech.edgx.prise.indexer.service.CandleService
-import tech.edgx.prise.indexer.service.dataprovider.module.carp.jdbc.CarpJdbcService
+import tech.edgx.prise.indexer.service.*
 import tech.edgx.prise.indexer.service.chain.ChainService
+import tech.edgx.prise.indexer.service.dataprovider.module.carp.jdbc.CarpJdbcService
 import tech.edgx.prise.indexer.service.classifier.module.MinswapClassifier
 import tech.edgx.prise.indexer.service.classifier.module.MinswapV2Classifier
 import tech.edgx.prise.indexer.service.classifier.module.SundaeswapClassifier
@@ -28,117 +41,195 @@ import tech.edgx.prise.indexer.service.dataprovider.module.koios.KoiosService
 import tech.edgx.prise.indexer.service.dataprovider.module.tokenregistry.TokenRegistryService
 import tech.edgx.prise.indexer.service.dataprovider.module.yacistore.YaciStoreService
 import tech.edgx.prise.indexer.service.monitoring.MonitoringService
-import tech.edgx.prise.indexer.service.price.HistoricalPriceService
-import tech.edgx.prise.indexer.service.price.LatestPriceService
-import tech.edgx.prise.indexer.thread.LatestPriceBatcher
+import tech.edgx.prise.indexer.thread.MaterialisedViewRefreshWorker
+import tech.edgx.prise.indexer.thread.OutlierDetectionWorker
 import tech.edgx.prise.indexer.util.Helpers
 import tech.edgx.prise.indexer.util.RunMode
 import java.time.LocalDateTime
 import java.util.*
-import kotlin.system.exitProcess
+import java.util.concurrent.TimeUnit
 
 val priseModules = module {
-    single { Configurer(get()) }
+    // Config and Configurer
+    single { (configFile: String?) -> Configurer(configFile) }
+    single<Config> { get<Configurer>(parameters = { parametersOf(getProperty("configFile", "prise.properties")) }).configure() }
 
     single { MonitoringService(get()) }
-    single { AssetRepository(get()) }
-    single { AssetService(get()) }
+    single { AssetService() }
     single { ChainService(get()) }
-    single { CarpRepository(get()) }
-    single { LatestPriceService(get()) }
-    single { BaseCandleRepository(get()) }
-    single { CandleService(get()) }
-    single { WeeklyCandleRepository(get()) }
-    single { DailyCandleRepository(get()) }
-    single { HourlyCandleRepository(get()) }
-    single { FifteenCandleRepository(get()) }
-    single { HistoricalPriceService(get()) }
+    single { CarpRepository() }
+    single { BaseCandleRepository() }
+    single { TxService() }
+    single { PriceService() }
 
-    /* Choose ChainDbService(s) */
-    single(named(ChainDatabaseServiceEnum.carpJDBC.name)) { CarpJdbcService(get()) } bind ChainDatabaseService::class
+    single { DbService() }
+
+    single { EventBus() }
+    single { SwapProcessor(get()) }
+    single { PriceProcessor(get()) }
+    single { PersistenceService(get()) }
+    single { EventDispatcher(get()) }
+
+    single { OutlierDetectionWorker() }
+    single { MaterialisedViewRefreshWorker(get()) }
+
+    single<EventPublisher> { (config: Config) ->
+        if (config.eventPublishingEnabled == true && config.messagingType == "redis") {
+            RedisEventPublisher(config)
+        } else {
+            NoOpEventPublisher()
+        }
+    }
+
+    single<Cache<String, Asset>> {
+        Caffeine.newBuilder()
+            .expireAfterWrite(10, TimeUnit.MINUTES)
+            .maximumSize(10000)
+            .build()
+    }
+
+    single(named(ChainDatabaseServiceEnum.carpJDBC.name)) { CarpJdbcService() } bind ChainDatabaseService::class
     single(named(ChainDatabaseServiceEnum.koios.name)) { KoiosService(get()) } bind ChainDatabaseService::class
     single(named(ChainDatabaseServiceEnum.blockfrost.name)) { BlockfrostService(get()) } bind ChainDatabaseService::class
     single(named(ChainDatabaseServiceEnum.yacistore.name)) { YaciStoreService(get()) } bind ChainDatabaseService::class
 
-    /* Choose one Token metadata service */
     single(named(TokenMetadataServiceEnum.tokenRegistry.name)) { TokenRegistryService() } bind TokenMetadataService::class
 
     single(named("dexClassifiers")) {
         listOf(WingridersClassifier, SundaeswapClassifier, MinswapClassifier, MinswapV2Classifier)
     }
+
+    // Database Connections
+    single<Database>(named("appDatabase")) {
+        val config: Config = get()
+        Database.connect(HikariDataSource(HikariConfig().apply {
+            jdbcUrl = config.appDatasourceUrl
+            driverClassName = config.appDatasourceDriverClassName
+            username = config.appDatasourceUsername
+            password = config.appDatasourcePassword
+            maximumPoolSize = 20
+            minimumIdle = 5
+            connectionTimeout = 10000
+            idleTimeout = 600000
+            maxLifetime = 1800000
+            validationTimeout = 5000
+            connectionTestQuery = "SELECT 1"
+            leakDetectionThreshold = 250000 // 250seconds, increased due to initial candle view creation
+        }))
+    }
+
+    single<Database?>(named("carpDatabase")) {
+        val config: Config = get()
+        if (config.chainDatabaseServiceModule == ChainDatabaseServiceEnum.carpJDBC.name) {
+            Database.connect(HikariDataSource(HikariConfig().apply {
+                jdbcUrl = config.carpDatasourceUrl
+                driverClassName = config.carpDatasourceDriverClassName
+                username = config.carpDatasourceUsername
+                password = config.carpDatasourcePassword
+                maximumPoolSize = 3
+            }))
+        } else {
+            null
+        }
+    }
 }
 
 class PriseRunner(private val args: Array<String>) : KoinComponent {
+    private val log = LoggerFactory.getLogger(this::class.java)
 
     companion object {
         @JvmStatic
         fun main(args: Array<String>) {
-            startKoin {
-                modules(priseModules)
-            }
             val runner = PriseRunner(args)
             runner.run()
         }
     }
 
     fun run() {
-        println("Arguments: ${args.joinToString()}")
-        val args = Args.parse(args)
+        val parsedArgs = Args.parse(args)
+        val configFile = if (parsedArgs.hasArg("config")) parsedArgs.getArg("config") else "prise.properties"
 
-        val configurer: Configurer by inject { parametersOf(if (args.hasArg("config")) args.getArg("config") else "prise.properties") }
-        val config = configurer.configure()
-        println("Config: $config")
-
-        val monitoringService: Optional<MonitoringService> = run {
-            if (config.startMetricsServer == true) {
-                val monitoringService: MonitoringService by inject{ parametersOf(config.metricsServerPort) }
-                Optional.of(monitoringService)
-            } else {
-                Optional.empty<MonitoringService>()
-            }
+        startKoin {
+            properties(mapOf("configFile" to (configFile as Any)))
+            modules(priseModules)
         }
-        if (monitoringService.isPresent) monitoringService.get().startServer()
+
+        val config: Config by inject()
+        log.info("Config: $config")
+
+        val monitoringService: Optional<MonitoringService> = if (config.startMetricsServer == true) {
+            val monitoringService: MonitoringService by inject { parametersOf(config.metricsServerPort) }
+            monitoringService.startServer()
+            Optional.of(monitoringService)
+        } else {
+            Optional.empty()
+        }
 
         val chainService: ChainService by inject { parametersOf(config) }
+        val eventDispatcher: EventDispatcher by inject { parametersOf(config) }
+        val outlierDetectionWorker: OutlierDetectionWorker by inject()
+        val materializedViewRefreshWorker: MaterialisedViewRefreshWorker by inject()
 
-        val latestPriceIndexerJob = LatestPriceBatcher(config)
+        eventDispatcher.start()
+        outlierDetectionWorker.start()
+        materializedViewRefreshWorker.start()
 
-        /* Start indexer thread(s) */
-        println("Running in mode: ${config.runMode.name} ...")
+        log.info("Running in mode: ${config.runMode.name}")
         when (config.runMode) {
             RunMode.livesync -> {
-                /* Start chain sync */
                 chainService.startSync { syncStatusCallback ->
-                    monitoringService.get().setGaugeValue(Helpers.CHAIN_SYNC_SLOT_LABEL, syncStatusCallback.toDouble())
+                    log.debug("Synch status callback: {}", syncStatusCallback)
+                    monitoringService.ifPresent {
+                        it.setGaugeValue(Helpers.CHAIN_SYNC_SLOT_LABEL, syncStatusCallback.toDouble())
+                    }
                 }
-                println("Started chainsync in livesync")
+                log.info("Started chainsync in livesync")
             }
             RunMode.oneshot -> {
-                    /* Start chain sync */
-                    chainService.startSync { syncStatusCallback ->
-                        val gapUntilSynced = LocalDateTime.now().toEpochSecond(Helpers.zoneOffset) -
-                                                syncStatusCallback + Helpers.slotConversionOffset
-                        println("Gap(s) until synced: $gapUntilSynced")
-                        if (gapUntilSynced < 100) {
-                            chainService.stopSync()
-                            latestPriceIndexerJob.cancel()
-                        }
-                        monitoringService.get().setGaugeValue(Helpers.CHAIN_SYNC_SLOT_LABEL, syncStatusCallback.toDouble())
+                chainService.startSync { syncStatusCallback ->
+                    val gapUntilSynced = LocalDateTime.now().toEpochSecond(Helpers.zoneOffset) -
+                            syncStatusCallback + Helpers.slotConversionOffset
+                    log.info("Gap(s) until synced: $gapUntilSynced")
+                    if (gapUntilSynced < 100) {
+                        log.info("Finished sync, stopping...")
+                        chainService.stopSync()
+                        log.info("Chain sync stopped")
+                        eventDispatcher.stop()
+                        outlierDetectionWorker.stop()
+                        materializedViewRefreshWorker.stop()
+                        shutdown(config)
                     }
-                println("Started chainsync in oneshot")
+                    monitoringService.ifPresent {
+                        it.setGaugeValue(Helpers.CHAIN_SYNC_SLOT_LABEL, syncStatusCallback.toDouble())
+                    }
+                }
+                log.info("Started chainsync in oneshot")
             }
         }
 
-        /* Start latest and historical price maker threads */
-        runBlocking {
-            println("Started latest price updater ...")
-            latestPriceIndexerJob.start().join()
+        if (config.runMode == RunMode.livesync) {
+            // If the ChainService service latch is released
+            Runtime.getRuntime().addShutdownHook(Thread {
+                log.info("Shutting down...")
+                chainService.stopSync()
+                log.info("Chain sync stopped")
+                eventDispatcher.stop()
+                outlierDetectionWorker.stop()
+                materializedViewRefreshWorker.stop()
+                shutdown(config)
+            })
         }
+    }
 
-        println("Finished ${config.runMode.name} run, to continue synching use run.mode 'live_sync', exiting...")
-        (config.appDataSource as HikariDataSource).close()
-        (config.carpDataSource as HikariDataSource).close()
-        println("bye...")
-        exitProcess(0)
+    private fun shutdown(config: Config) {
+        log.info("Closing data sources")
+        try {
+            (config.appDataSource as HikariDataSource).close()
+            config.carpDataSource?.let { (it as HikariDataSource).close() }
+        } catch (e: Exception) {
+            log.error("Error closing data sources", e)
+        }
+        log.info("Shutdown complete, exiting")
     }
 }
+

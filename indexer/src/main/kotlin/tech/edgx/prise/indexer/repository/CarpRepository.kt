@@ -1,8 +1,11 @@
 package tech.edgx.prise.indexer.repository
 
 import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
+import org.koin.core.qualifier.named
 import org.ktorm.database.Database
 import org.ktorm.database.asIterable
+import org.slf4j.LoggerFactory
 import tech.edgx.prise.indexer.domain.*
 import java.sql.ResultSet
 import javax.sql.DataSource
@@ -15,11 +18,20 @@ import javax.sql.DataSource
    - Could use the standard carp webserver to get the 'spent' transactionOutputs, however cannot also use it to get the blockNearestToSlot
    - Don't want the add another webserver to this project, so instead just connecting by jdbc until finding a simpler approach
  */
-class CarpRepository(database: Database): KoinComponent {
-    private val database = database
+class CarpRepository: KoinComponent {
+    private val log = LoggerFactory.getLogger(javaClass::class.java)
+    //private val database = database
+    private val database: Database? by inject(named("carpDatabase"))
+
+    init {
+        if (database == null) {
+            log.warn("Carp database not available, ensure chainDatabaseServiceModule=carpJDBC")
+        }
+    }
 
     fun getTransactionOutput(txInHashes: Array<String>, txInIdxs: Array<Int>): List<TransactionOutputView> {
-        val transactionOutputs = database.useConnection { conn ->
+        if (database == null) return emptyList()
+        val transactionOutputs = database!!.useConnection { conn ->
             val sql = "select \"TransactionOutput\".payload as TXOUT_PAYLOAD, output_index, encode(hash,'hex') as HASH from \"TransactionOutput\" " +
                         "join \"Transaction\" on \"Transaction\".id = \"TransactionOutput\".tx_id " +
                         "where (\"Transaction\".hash, \"TransactionOutput\".output_index) " +
@@ -47,7 +59,8 @@ class CarpRepository(database: Database): KoinComponent {
     }
 
     fun getBlockNearestToSlot(slot: Long): BlockView? {
-        val latestBlock = database.useConnection { conn ->
+        if (database == null) return null
+        val latestBlock = database!!.useConnection { conn ->
             val sql = "select encode(hash,'hex') as hash, epoch, height, slot from \"Block\" " +
                     "where slot >= ? order by slot asc limit 1"
             conn.prepareStatement(sql).use { statement ->
@@ -69,7 +82,8 @@ class CarpRepository(database: Database): KoinComponent {
     }
 
     fun getLatestBlock(): BlockView? {
-        val latestBlock = database.useConnection { conn ->
+        if (database == null) return null
+        val latestBlock = database!!.useConnection { conn ->
             val sql = "select encode(hash,'hex') as hash, epoch, height, slot from \"Block\" " +
                     "order by slot desc limit 1"
             conn.prepareStatement(sql).use { statement ->
@@ -90,7 +104,8 @@ class CarpRepository(database: Database): KoinComponent {
     }
 
     fun getBlockByHeight(height: Long): BlockView? {
-        val latestBlock = database.useConnection { conn ->
+        if (database == null) return null
+        val latestBlock = database!!.useConnection { conn ->
             val sql = "select encode(hash,'hex') as hash, epoch, height, slot from \"Block\" " +
                     "where height = ?"
             conn.prepareStatement(sql).use { statement ->

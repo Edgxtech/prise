@@ -16,7 +16,8 @@ class ConfigTest {
         val properties = Properties()
         val input: InputStream = File("src/test/resources/prise.withcarp.properties").inputStream()
         properties.load(input)
-        assertDoesNotThrow { Configurer.validateProperties(properties) }
+        val helpers = ConfigHelpers(properties)
+        assertDoesNotThrow { Configurer.validateProperties(properties, helpers) }
     }
 
     @Test
@@ -24,8 +25,9 @@ class ConfigTest {
         val properties = Properties()
         val input: InputStream = File("src/test/resources/prise.withcarp.properties").inputStream()
         properties.load(input)
-        properties.setProperty(Configurer.LATEST_PRICES_UPDATE_INTERVAL_PROPERTY, "")
-        assertThrows<ConfigurationException> { Configurer.validateProperties(properties) }
+        val helpers = ConfigHelpers(properties)
+        properties.setProperty(Constants.LATEST_PRICES_UPDATE_INTERVAL_PROPERTY, "")
+        assertThrows<ConfigurationException> { Configurer.validateProperties(properties, helpers) }
     }
 
     @Test
@@ -33,14 +35,15 @@ class ConfigTest {
         val properties = Properties()
         val input: InputStream = File("src/test/resources/prise.withcarp.properties").inputStream()
         properties.load(input)
-        properties.setProperty(Configurer.CHAIN_DATABASE_SERVICE_MODULE_PROPERTY, ChainDatabaseServiceEnum.koios.name)
-        properties.setProperty(Configurer.KOIOS_DATASOURCE_URL_PROPERTY, "")
-        assertThrows<ConfigurationException> { Configurer.validateProperties(properties) }
-        properties.setProperty(Configurer.KOIOS_DATASOURCE_APIKEY_PROPERTY, "abcd")
-        assertThrows<ConfigurationException> { Configurer.validateProperties(properties) }
-        properties.setProperty(Configurer.KOIOS_DATASOURCE_URL_PROPERTY, "koiosurl.com")
-        properties.setProperty(Configurer.KOIOS_DATASOURCE_APIKEY_PROPERTY, "")
-        assertDoesNotThrow { Configurer.validateProperties(properties) }
+        val helpers = ConfigHelpers(properties)
+        properties.setProperty(Constants.CHAIN_DATABASE_SERVICE_MODULE_PROPERTY, ChainDatabaseServiceEnum.koios.name)
+        properties.setProperty(Constants.KOIOS_DATASOURCE_URL_PROPERTY, "")
+        assertThrows<ConfigurationException> { Configurer.validateProperties(properties, helpers) }
+        properties.setProperty(Constants.KOIOS_DATASOURCE_APIKEY_PROPERTY, "abcd")
+        assertThrows<ConfigurationException> { Configurer.validateProperties(properties, helpers) }
+        properties.setProperty(Constants.KOIOS_DATASOURCE_URL_PROPERTY, "koiosurl.com")
+        properties.setProperty(Constants.KOIOS_DATASOURCE_APIKEY_PROPERTY, "")
+        assertDoesNotThrow { Configurer.validateProperties(properties, helpers) }
     }
 
     @Test
@@ -48,7 +51,8 @@ class ConfigTest {
         val properties = Properties()
         val input: InputStream = File("src/test/resources/prise.properties").inputStream()
         properties.load(input)
-        assertDoesNotThrow { Configurer.validateProperties(properties) }
+        val helpers = ConfigHelpers(properties)
+        assertDoesNotThrow { Configurer.validateProperties(properties, helpers) }
     }
 
     @Test
@@ -56,10 +60,11 @@ class ConfigTest {
         val properties = Properties()
         val input: InputStream = File("src/test/resources/prise.properties").inputStream()
         properties.load(input)
-        properties.setProperty(Configurer.CHAIN_DATABASE_SERVICE_MODULE_PROPERTY, ChainDatabaseServiceEnum.yacistore.name)
-        properties.setProperty(Configurer.YACISTORE_DATASOURCE_URL_PROPERTY, "")
-        assertThrows<ConfigurationException> { Configurer.validateProperties(properties) }
-        properties.setProperty(Configurer.YACISTORE_DATASOURCE_URL_PROPERTY, "koiosurl.com")
-        assertDoesNotThrow { Configurer.validateProperties(properties) }
+        val helpers = ConfigHelpers(properties)
+        properties.setProperty(Constants.CHAIN_DATABASE_SERVICE_MODULE_PROPERTY, ChainDatabaseServiceEnum.yacistore.name)
+        properties.setProperty(Constants.YACISTORE_DATASOURCE_URL_PROPERTY, "")
+        assertThrows<ConfigurationException> { Configurer.validateProperties(properties, helpers) }
+        properties.setProperty(Constants.YACISTORE_DATASOURCE_URL_PROPERTY, "koiosurl.com")
+        assertDoesNotThrow { Configurer.validateProperties(properties, helpers) }
     }
 }

@@ -14,6 +14,7 @@ import org.koin.test.inject
 import org.slf4j.LoggerFactory
 import tech.edgx.prise.indexer.BaseWithCarp
 import tech.edgx.prise.indexer.model.DexEnum
+import tech.edgx.prise.indexer.processor.SwapProcessor
 import tech.edgx.prise.indexer.repository.CarpRepository
 import tech.edgx.prise.indexer.service.chain.ChainService
 import java.io.File
@@ -22,6 +23,7 @@ import java.io.PrintWriter
 class TransactionDataGenerator: BaseWithCarp() {
     private val log = LoggerFactory.getLogger(javaClass)
     val chainService: ChainService by inject { parametersOf(config) }
+    val swapProcessor: SwapProcessor by inject { parametersOf(config) }
     val carpRepository: CarpRepository by inject { parametersOf(config.carpDatabase) }
 
     @Ignore
@@ -51,7 +53,7 @@ class TransactionDataGenerator: BaseWithCarp() {
         val blockFlux = blockStreamer.stream()
         val subscription = blockFlux.subscribe { block: Block ->
             log.info("Received Block >> ${block.header.headerBody.blockNumber}, ${block.header.headerBody.blockHash}, slot: ${block.header.headerBody.slot}, Txns # >> ${block.transactionBodies.size}")
-            val qualifiedTx = chainService.qualifyTransactions(block.header.headerBody.slot, block.transactionBodies, block.transactionWitness)
+            val qualifiedTx = swapProcessor.qualifyTransactions(block.header.headerBody.slot, block.transactionBodies, block.transactionWitness)
             val filteredDexSpecificTx = qualifiedTx
                 .firstOrNull { it.txHash == txHash }
             println("Found transactions for DEX #: ${filteredDexSpecificTx}")

@@ -1,0 +1,74 @@
+
+CREATE TABLE IF NOT EXISTS asset(
+    id BIGSERIAL PRIMARY KEY,
+    unit VARCHAR(255) NOT NULL UNIQUE,
+    policy VARCHAR(255) NOT NULL,
+    native_name VARCHAR(255) NOT NULL,
+    sidechain VARCHAR(255),
+    decimals INT,
+    logo_uri VARCHAR(255),
+    preferred_name VARCHAR(255),
+    metadata_fetched BOOLEAN,
+    CONSTRAINT idx_asset_unit UNIQUE (unit)
+);
+
+-- Transaction Table
+CREATE TABLE IF NOT EXISTS tx(
+    id BIGSERIAL PRIMARY KEY,
+    hash BYTEA NOT NULL,
+    CONSTRAINT uk_hash UNIQUE (hash)
+);
+
+-- Price Table
+CREATE TABLE IF NOT EXISTS price(
+    asset_id BIGINT NOT NULL,
+    quote_asset_id BIGINT NOT NULL,
+    provider INT NOT NULL,
+    time BIGINT NOT NULL,
+    outlier BOOLEAN DEFAULT NULL,
+    tx_id BIGINT NOT NULL,
+    tx_swap_idx INT NOT NULL,
+    price REAL NOT NULL,
+    amount1 DECIMAL(38,0) NOT NULL,
+    amount2 DECIMAL(38,0) NOT NULL,
+    operation INT NOT NULL,
+    PRIMARY KEY (time, tx_id, tx_swap_idx)
+) PARTITION BY RANGE (time);
+
+-- Create partitions
+CREATE TABLE IF NOT EXISTS price_p2022 PARTITION OF price FOR VALUES FROM (MINVALUE) TO (1672531200);
+CREATE TABLE IF NOT EXISTS price_p2023 PARTITION OF price FOR VALUES FROM (1672531200) TO (1704067200);
+CREATE TABLE IF NOT EXISTS price_p2024 PARTITION OF price FOR VALUES FROM (1704067200) TO (1735603200);
+CREATE TABLE IF NOT EXISTS price_p2025 PARTITION OF price FOR VALUES FROM (1735603200) TO (1767139200);
+CREATE TABLE IF NOT EXISTS price_p2026 PARTITION OF price FOR VALUES FROM (1767139200) TO (1798675200);
+CREATE TABLE IF NOT EXISTS price_p2027 PARTITION OF price FOR VALUES FROM (1798675200) TO (1830211200);
+CREATE TABLE IF NOT EXISTS price_p2028 PARTITION OF price FOR VALUES FROM (1830211200) TO (1861747200);
+CREATE TABLE IF NOT EXISTS price_p2029 PARTITION OF price FOR VALUES FROM (1861747200) TO (1893283200);
+CREATE TABLE IF NOT EXISTS price_p2030 PARTITION OF price FOR VALUES FROM (1893283200) TO (1924819200);
+CREATE TABLE IF NOT EXISTS price_p_future PARTITION OF price FOR VALUES FROM (1924819200) TO (MAXVALUE);
+
+-- Indexes for price
+CREATE INDEX IF NOT EXISTS idx_price_query ON price (asset_id, quote_asset_id, provider, time) WHERE outlier IS NULL;
+
+CREATE TABLE IF NOT EXISTS latest_price(
+    asset_id BIGINT NOT NULL,
+    quote_asset_id BIGINT NOT NULL,
+    provider INT NOT NULL,
+    time BIGINT NOT NULL,
+    tx_id BIGINT NOT NULL,
+    price REAL NOT NULL,
+    amount1 DECIMAL(38,0) NOT NULL,
+    amount2 DECIMAL(38,0) NOT NULL,
+    operation INT NOT NULL,
+    PRIMARY KEY (asset_id, quote_asset_id, provider)
+);
+
+CREATE TABLE IF NOT EXISTS view_refresh_log(
+    view_name TEXT PRIMARY KEY,
+    last_refresh TIMESTAMP WITH TIME ZONE,
+    last_time BIGINT -- Unix timestamp in seconds
+);
+
+--INSERT INTO view_refresh_log (view_name, last_refresh, last_time)
+--VALUES ('candle_weekly', '2023-01-01 00:00:00+00', 0)
+--ON CONFLICT (view_name) DO NOTHING;

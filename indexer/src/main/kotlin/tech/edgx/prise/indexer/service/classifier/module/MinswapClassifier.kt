@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory
 import tech.edgx.prise.indexer.model.DexEnum
 import tech.edgx.prise.indexer.model.DexOperationEnum
 import tech.edgx.prise.indexer.model.FullyQualifiedTxDTO
-import tech.edgx.prise.indexer.model.dex.Swap
+import tech.edgx.prise.indexer.model.dex.SwapDTO
 import tech.edgx.prise.indexer.service.classifier.DexClassifier
 import tech.edgx.prise.indexer.service.classifier.common.ClassifierHelpers
 import tech.edgx.prise.indexer.service.classifier.common.DexClassifierEnum
@@ -45,7 +45,7 @@ object MinswapClassifier: DexClassifier {
     }
 
     /* Pass this tx with all inputs, outputs, witnesses */
-    override fun computeSwaps(txDTO: FullyQualifiedTxDTO) : List<Swap> {
+    override fun computeSwaps(txDTO: FullyQualifiedTxDTO) : List<SwapDTO> {
         log.debug("Computing swaps for tx: ${txDTO.txHash}")
 
         val outputDatumPair = txDTO.outputUtxos
@@ -80,8 +80,8 @@ object MinswapClassifier: DexClassifier {
         return computeVersionSpecificSwaps(txDTO, inputDatumPairsV1, asset1Unit, asset2Unit, DexEnum.MINSWAP)
     }
 
-    fun computeVersionSpecificSwaps(txDTO: FullyQualifiedTxDTO, inputDatumPairs: List<Pair<TransactionOutput, PlutusData?>>, asset1Unit: String, asset2Unit: String, dex: DexEnum): List<Swap> {
-        val swaps = mutableListOf<Swap>()
+    fun computeVersionSpecificSwaps(txDTO: FullyQualifiedTxDTO, inputDatumPairs: List<Pair<TransactionOutput, PlutusData?>>, asset1Unit: String, asset2Unit: String, dex: DexEnum): List<SwapDTO> {
+        val swapDTOS = mutableListOf<SwapDTO>()
         inputDatumPairs.forEach swaploop@{ (input, inputDatum) ->
             val lpInputDatumJsonNode = JsonUtil.parseJson(PlutusDataJsonConverter.toJson(inputDatum))
 
@@ -149,19 +149,19 @@ object MinswapClassifier: DexClassifier {
                 return@swaploop
             }
 
-            val swap = Swap(
+            val swapDTO = SwapDTO(
                 txDTO.txHash,
                 txDTO.blockSlot,
                 dex.code,
                 asset1Unit,
                 asset2Unit,
-                amountOperationDTO.amount1,
-                amountOperationDTO.amount2,
+                amountOperationDTO.amount1.toBigDecimal(),
+                amountOperationDTO.amount2.toBigDecimal(),
                 amountOperationDTO.swapDirection
             )
-            log.debug("Computed swap: $swap")
-            swaps.add(swap)
+            log.debug("Computed swap: $swapDTO")
+            swapDTOS.add(swapDTO)
         }
-        return swaps
+        return swapDTOS
     }
 }
