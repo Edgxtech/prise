@@ -1,12 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<configuration scan="true" scanPeriod="300 seconds">
-    <define name="propExists" class="ch.qos.logback.core.property.ResourceExistsPropertyDefiner">
-        <resource>environment.properties</resource>
-    </define>
-    <if condition='${propExists}'>
+<configuration scan="true" scanPeriod="300 seconds" debug="true">
+    <!-- Define log.env from system property -->
+    <property name="log.env" value="${LOG_ENV:-default}" />
+
+    <!-- Conditional inclusion based on log.env -->
+    <if condition='property("log.env").length() > 0 &amp;&amp; !property("log.env").equals("default")'>
         <then>
-            <property resource="environment.properties" />
-            <include resource="logback-${logEnv}.xml"/>
+            <include resource="logback-${log.env}.xml" optional="true" />
         </then>
+        <else>
+            <!-- Fallback configuration if log.env is missing -->
+            <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+                <encoder>
+                    <pattern>%d{HH:mm:ss.SSS} %-5level [%15.15thread] %-40.40logger{39} : %msg%n%ex</pattern>
+                    <charset>UTF-8</charset>
+                </encoder>
+            </appender>
+
+            <!-- Logger levels -->
+            <logger name="com.zaxxer.hikari" level="WARN" />
+            <logger name="jdk.internal.reflect" level="WARN" />
+            <logger name="org.ktorm" level="INFO" />
+            <logger name="com.bloxbean" level="INFO" />
+            <logger name="com.bloxbean.cardano.yaci.core" level="WARN" />
+            <logger name="tech.edgx.prise.indexer" level="INFO" />
+
+            <!-- Root logger -->
+            <root level="INFO">
+                <appender-ref ref="CONSOLE" />
+            </root>
+        </else>
     </if>
 </configuration>

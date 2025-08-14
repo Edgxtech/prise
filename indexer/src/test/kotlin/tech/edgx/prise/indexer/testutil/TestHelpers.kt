@@ -3,7 +3,7 @@ package tech.edgx.prise.indexer.testutil
 import com.bloxbean.cardano.yaci.core.protocol.chainsync.messages.Point
 import com.google.gson.Gson
 import tech.edgx.prise.indexer.domain.DexPriceHistoryView
-import tech.edgx.prise.indexer.model.dex.Swap
+import tech.edgx.prise.indexer.model.dex.SwapDTO
 import tech.edgx.prise.indexer.util.Helpers
 import java.io.File
 import java.io.FileOutputStream
@@ -96,10 +96,10 @@ class TestHelpers {
             FileOutputStream(filename).apply { writeDexPriceHistoriesCsv(vals) }
         }
 
-        fun saveComputedSwaps(swaps: List<Swap>) {
+        fun saveComputedSwaps(swapDTOS: List<SwapDTO>) {
             // TEMP, just to speed up devtesting
             val writer: PrintWriter = File("src/test/resources/testdata/sundaeswap/computed_swaps_0000Z01Jan24-0010Z01Jan24.json").printWriter()
-            writer.println(Gson().toJson(swaps))
+            writer.println(Gson().toJson(swapDTOS))
             writer.flush()
             writer.close()
         }

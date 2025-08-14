@@ -4,252 +4,330 @@ import com.bloxbean.cardano.yaci.core.common.Constants
 import com.bloxbean.cardano.yaci.core.common.NetworkType
 import com.bloxbean.cardano.yaci.core.model.Block
 import com.bloxbean.cardano.yaci.core.model.Era
-import com.bloxbean.cardano.yaci.core.model.TransactionBody
-import com.bloxbean.cardano.yaci.core.model.Witnesses
 import com.bloxbean.cardano.yaci.core.protocol.chainsync.messages.Point
 import com.bloxbean.cardano.yaci.core.protocol.chainsync.messages.Tip
 import com.bloxbean.cardano.yaci.helper.BlockSync
 import com.bloxbean.cardano.yaci.helper.listener.BlockChainDataListener
 import com.bloxbean.cardano.yaci.helper.model.Transaction
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.*
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.koin.core.parameter.parametersOf
 import org.koin.core.qualifier.named
 import org.slf4j.LoggerFactory
 import tech.edgx.prise.indexer.config.Config
-import tech.edgx.prise.indexer.model.FullyQualifiedTxDTO
-import tech.edgx.prise.indexer.model.dex.Swap
-import tech.edgx.prise.indexer.service.CandleService
-import tech.edgx.prise.indexer.service.classifier.DexClassifier
+import tech.edgx.prise.indexer.event.BlockReceivedEvent
+import tech.edgx.prise.indexer.event.EventBus
+import tech.edgx.prise.indexer.event.RollbackEvent
+import tech.edgx.prise.indexer.service.DbService
 import tech.edgx.prise.indexer.service.dataprovider.ChainDatabaseService
-import tech.edgx.prise.indexer.service.price.HistoricalPriceService
-import tech.edgx.prise.indexer.service.price.LatestPriceService
-import tech.edgx.prise.indexer.thread.KeepAliveThread
 import tech.edgx.prise.indexer.util.Helpers
+import java.net.Socket
 import java.time.Duration
 import java.time.LocalDateTime
+import java.time.ZoneOffset
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import kotlin.system.exitProcess
+import kotlin.time.toKotlinDuration
 
 class ChainService(private val config: Config) : KoinComponent {
-    private val log = LoggerFactory.getLogger(javaClass::class.java)
-
+    private val log = LoggerFactory.getLogger(this::class.java)
+    private val eventBus: EventBus by inject { parametersOf(config) }
     private val chainDatabaseService: ChainDatabaseService by inject(named(config.chainDatabaseServiceModule)) { parametersOf(config) }
-    val latestPriceService: LatestPriceService by inject { parametersOf(config) }
-    val historicalPriceService: HistoricalPriceService by inject { parametersOf(config) }
-    val candleService: CandleService by inject { parametersOf(config) }
-
-    lateinit var blockSync: BlockSync
+    private val dbService: DbService by inject()
+    private lateinit var blockSync: BlockSync
+    private var blockLatch = CountDownLatch(1)
+    private var rollbackLatch = CountDownLatch(1)
+    var initialised = false
+    @Volatile
+    private var lastBlockReceivedTimeMs = System.currentTimeMillis()
+    @Volatile
+    private var currentSlot: Long = 0L
+    @Volatile
+    private var isSynced = false
+    private val syncCheckInterval = Duration.ofSeconds(10)
+    private val maxBlockInactivityMs = Duration.ofMinutes(3) //300_000 // 5 minutes
+    private val keepAliveInterval = Duration.ofSeconds(8)
+    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob().apply {
+        invokeOnCompletion { throwable ->
+            log.info("Coroutine scope cancelled, cause: $throwable")
+        }
+    })
+    private var keepAliveJob: Job? = null
+    private var monitorJob: Job? = null
+    private val serviceLatch = CountDownLatch(1)
 
     data class InitialisationState(
-        val chainStartPoint: Point,
-        val candleStartPoints: Map<Duration,Long>
+        val chainStartPoint: Point
     )
 
-    /* Inject all DexClassifier modules */
-    private val dexClassifiers: List<DexClassifier> by inject(named("dexClassifiers"))
-
-    var initialised = false
-
-    private val dexClassifierMap: Map<String, DexClassifier> = dexClassifiers
-        .flatMap {dexClassifier ->
-            dexClassifier.getPoolScriptHash().map {
-                it to dexClassifier
-            } }
-        .filter { config.dexClassifiers?.contains(it.second.getDexName())?: false }
-        .toMap()
-
-    private val dexPaymentCredentials = dexClassifierMap.keys
-
-    fun startSync(syncStatusCallback: (Long) -> Unit) {
-        candleService.addIndexesIfRequired()
-
-        /* determine chain start point && the candle sync start points enabling continuation of candles */
-        val initialisationState = determineInitialisationState(config.startPointTime)
-        log.info("Using initialisation state: $initialisationState, \nclassifiers: ${dexClassifierMap.values.toSet().map { it.getDexName() }}, \nchain db service: $chainDatabaseService")
-
-        val blockChainDataListener = object : BlockChainDataListener {
-            override fun onBlock(era: Era, block: Block, transactions: List<Transaction>) {
-                processBlock(block)
-                if (block.header.headerBody.blockNumber % 10 == 0L) {
-                    syncStatusCallback(block.header.headerBody.slot)
-                    log.info("Processed 10 Block(s) until >> ${block.header.headerBody.blockNumber}, ${block.header.headerBody.blockHash}, ${block.header.headerBody.slot}")
+    fun checkNodeConnection(): Boolean {
+        var retryCount = 0
+        val maxRetries = 3
+        while (retryCount < maxRetries) {
+            try {
+                Socket(config.cnodeAddress, config.cnodePort!!).use { }
+                log.debug("Node connection successful")
+                return true
+            } catch (e: Exception) {
+                retryCount++
+                log.warn("Node connection failed (attempt $retryCount/$maxRetries): ${e.message}")
+                if (retryCount >= maxRetries) {
+                    log.error("Failed to connect to node after $maxRetries attempts")
+                    return false
                 }
+                Thread.sleep(2000) // Wait 2 seconds before retry
             }
+        }
+        return false
+    }
 
-            override fun onRollback(point: Point?) {
+    val blockChainDataListener = object : BlockChainDataListener {
+        override fun onBlock(era: Era, block: Block, transactions: List<Transaction>) {
+            log.debug("Received block: {}", block.header.headerBody.blockNumber)
+            currentSlot = block.header.headerBody.slot
+            lastBlockReceivedTimeMs = System.currentTimeMillis()
+            val startTime = System.currentTimeMillis()
+            try {
+                blockLatch = CountDownLatch(1)
+                runBlocking {
+                    eventBus.publish(BlockReceivedEvent(block))
+                }
+                log.debug("Awaiting block latch for block {}", block.header.headerBody.blockNumber)
+                blockLatch.await()
+                val blockNum = block.header.headerBody.blockNumber
+                when (isSynced) {
+                    true -> log.info("Processed Block >> ${blockNum}, ${block.header.headerBody.blockHash}, ${block.header.headerBody.slot}")
+                    false -> {
+                        if (blockNum % 10 == 0L) {
+                            log.info("Processed 10 Block(s) until >> ${blockNum}, " + "${block.header.headerBody.blockHash}, ${block.header.headerBody.slot}")
+                        }
+                    }
+                }
+                syncStatusCallback(block.header.headerBody.slot)
+                val elapsed = System.currentTimeMillis() - startTime
+                if (elapsed > 2000) {
+                    log.warn("Processed block ${block.header.headerBody.blockNumber} in ${elapsed}ms")
+                }
+            } catch (e: Exception) {
+                log.error("Failed to process block ${block.header.headerBody.blockNumber}", e)
+            } finally {
+                blockLatch.countDown()
+            }
+        }
+
+        override fun onRollback(point: Point?) {
+            try {
                 if (initialised) {
-                    log.info("Rollback called, to point: $point, Is initialised: $initialised")
-                    if (point?.slot==0L || point?.hash==null) {
+                    log.info("Rollback called, to point: {}", point)
+                    if (point?.slot == 0L || point?.hash == null) {
                         log.info("Ignoring rollback, no point provided")
                         return
                     }
-                    blockSync.stop()
-
-                    /* Re-determine initialisation point, from nearest discrete date IOT buffer swaps
-                    *  Use the lower of candleSyncPoint and rollbackPoint for continuity */
-                    val rollbackPointTime = point.slot.minus(Helpers.slotConversionOffset)
-                    val syncPointTime = candleService.getSyncPointTime()
-                    log.info("Candle sync point time: $syncPointTime vs rollbacktime: $rollbackPointTime, is rollback after synch point (SHOULDNT BE): ${(rollbackPointTime > syncPointTime!!)}") //, rollbackInitialisationState: $rollbackInitialisationState, is rollback chain init point after syncPoint (SHOULDNT BE): ${(rollbackInitialisationState.chainStartPoint.slot.minus(Helpers.slotConversionOffset) > syncPointTime!!)}")
-                    val reInitialisationTime = when(syncPointTime < rollbackPointTime) {
-                        true -> syncPointTime
-                        else -> rollbackPointTime
+                    rollbackLatch = CountDownLatch(1)
+                    runBlocking {
+                        log.debug("Stopping block sync")
+                        blockSync.stop()
+                        eventBus.publish(RollbackEvent(point))
                     }
-
-                    val rollbackInitialisationState = determineInitialisationState(reInitialisationTime)
-                    log.info("On rollback, re-initialisation time: $reInitialisationTime, re-initialisation state: $rollbackInitialisationState")
-
-                    /* Pre-set the previous candle states */
-                    historicalPriceService.initialiseLastCandleState(rollbackInitialisationState.candleStartPoints)
-                    initialised = false
-                    blockSync.startSync(rollbackInitialisationState.chainStartPoint, this)
+                    if (!rollbackLatch.await(20, TimeUnit.SECONDS)) {
+                        log.error("Rollback processing timed out for point $point")
+                        rollbackLatch.countDown()
+                    }
                 } else {
                     initialised = true
-                    log.info("(Re)Initialised...")
+                    //log.info("(Re)Initialised...")
                 }
-            }
-
-            override fun intersactNotFound(tip: Tip) {
-                log.debug("Intersact not found for tip: $tip")
-                blockSync.stop()
-
-                /* Re-determine initialisation point, from nearest discrete date IOT buffer swaps */
-                val rollbackPointTime = tip.point.slot.minus(Helpers.slotConversionOffset)
-                val syncPointTime = candleService.getSyncPointTime()
-                log.info("Candle sync point time: $syncPointTime vs rollbacktime: $rollbackPointTime, is rollback after synch point (SHOULDNT BE): ${(rollbackPointTime > syncPointTime!!)}")
-                val reInitialisationTime = when(syncPointTime < rollbackPointTime) {
-                    true -> syncPointTime
-                    else -> rollbackPointTime
-                }
-
-                val rollbackInitialisationState = determineInitialisationState(reInitialisationTime)
-                log.info("On rollback, re-initialisation time: $reInitialisationTime, re-initialisation state: $rollbackInitialisationState")
-
-                /* Pre-set the previous candle states */
-                historicalPriceService.initialiseLastCandleState(rollbackInitialisationState.candleStartPoints)
-                blockSync.startSync(rollbackInitialisationState.chainStartPoint, this)
+            } catch (e: Exception) {
+                log.error("Failed to rollback to point ${point}", e)
+                rollbackLatch.countDown()
             }
         }
 
-        /* Pre-set the previous candle states */
-        historicalPriceService.initialiseLastCandleState(initialisationState.candleStartPoints)
-
-        blockSync = BlockSync(config.cnodeAddress,  config.cnodePort!!, NetworkType.MAINNET.protocolMagic, Constants.WELL_KNOWN_MAINNET_POINT)
-        blockSync.startSync(initialisationState.chainStartPoint, blockChainDataListener)
-        val keepAliveThread = KeepAliveThread(config, blockSync)
-        keepAliveThread.start()
+        override fun intersactNotFound(tip: Tip) {
+            log.debug("Intersect not found for tip: $tip")
+            blockSync.stop()
+            val rollbackPointTime = tip.point.slot - Helpers.slotConversionOffset
+            val syncPointTime = dbService.getSyncPointTime()
+            val reInitialisationTime = syncPointTime?.let { minOf(it, rollbackPointTime) } ?: rollbackPointTime
+            val rollbackInitialisationState = determineInitialisationState(reInitialisationTime)
+            log.info("On intersect not found, re-initialisation time: $reInitialisationTime, state: $rollbackInitialisationState")
+            restartBlockSync(rollbackInitialisationState.chainStartPoint, this)
+        }
     }
 
-    /* Auto select a point; if no candles, use first dex launch block/slot otherwise check in app
-       db for suitable start point to continue where it left off. The requirement here is
-       to be able to continue where it left off, which will be the point equal to the smallest
-       reso duration table min of each symbol max time */
-    fun determineInitialisationState(providedStartTime: Long?): InitialisationState {
-        val candleStartPoints = when {
-            providedStartTime !== null -> {
-                log.info("Starting from or near a provided time: $providedStartTime")
-                getDiscreteCandleAdjustedTimes(providedStartTime)
+    private var syncStatusCallback: (Long) -> Unit = {}
+
+    fun startSync(syncStatusCallback: (Long) -> Unit) {
+        try {
+            checkNodeConnection()
+            dbService.createSchemasIfRequired()
+            val initialisationState = determineInitialisationState(config.startPointTime)
+            log.info("Using initialisation state: $initialisationState")
+            this.syncStatusCallback = syncStatusCallback
+            restartBlockSync(initialisationState.chainStartPoint, blockChainDataListener)
+            try {
+                serviceLatch.await() // Block main thread until shutdown
+                log.debug("Service latch released")
+            } catch (e: InterruptedException) {
+                log.warn("Service interrupted", e)
+                Thread.currentThread().interrupt()
             }
-            else -> {
-                val syncPointTime = candleService.getSyncPointTime()
-                log.info("Retrieved sync point time: $syncPointTime")
-                val nearestPoint = when (syncPointTime == null) {
+        } catch (e: Exception) {
+            log.error("Chain sync service failed", e)
+            stopSync()
+            exitProcess(1)
+        }
+    }
+
+    fun determineInitialisationState(providedStartTime: Long?): InitialisationState {
+        val startTime = when(providedStartTime != null) {
+            true -> {
+                if (!::blockSync.isInitialized) log.info("Starting from provided start time: $providedStartTime")
+                providedStartTime
+            }
+            false -> {
+                val latestSyncTime = dbService.getSyncPointTime()
+                val derivedStartTime = when (latestSyncTime == null) {
                     true -> {
                         log.info("Starting from known dex launch date")
-                        getDiscreteCandleAdjustedTimes(Helpers.dexLaunchTime)
+                        Helpers.dexLaunchTime
                     }
                     false -> {
-                        log.info("Already have some candles, resuming from last sync point: ${syncPointTime}, slot: ${syncPointTime + Helpers.slotConversionOffset}")
-                        getDiscreteCandleAdjustedTimes(syncPointTime)
+                        log.info("Already have some candles, resuming from last sync point: ${latestSyncTime}, slot: ${latestSyncTime + Helpers.slotConversionOffset}")
+                        latestSyncTime
                     }
                 }
-                nearestPoint
+                if (!::blockSync.isInitialized) log.info("Starting from derived start time: $derivedStartTime")
+                derivedStartTime
             }
         }
-        log.info("Getting block nearest to slot: ${candleStartPoints[Helpers.smallestDuration]?.plus(Helpers.slotConversionOffset)}")
-        /* Chain sync start point is the nearest block to the smallest resolution duration */
-        val nearestBlock = candleStartPoints[Helpers.smallestDuration]?.plus(Helpers.slotConversionOffset)
-            ?.let { chainDatabaseService.getBlockNearestToSlot(it) }
-            ?: throw Exception("Tried finding point to synch from, using: ${candleStartPoints[Helpers.smallestDuration]}, nearestBlock not found, exiting")
-        return InitialisationState(Point(nearestBlock.slot, nearestBlock.hash), candleStartPoints)
+        val nearestBlock = startTime.plus(Helpers.slotConversionOffset)
+            .let { chainDatabaseService.getBlockNearestToSlot(it) }
+            ?: throw Exception("Nearest block not found for: $startTime, slot: ${startTime.plus(Helpers.slotConversionOffset)}")
+        return InitialisationState(Point(nearestBlock.slot, nearestBlock.hash))
     }
 
-    /* Align back to the beginning of nearest candle dtg */
-    private fun getDiscreteCandleAdjustedTimes(time: Long): Map<Duration,Long> {
-        return Helpers.allResoDurations.associateWith {
-            Helpers.toNearestDiscreteDate(it, LocalDateTime.ofEpochSecond(time, 0 , Helpers.zoneOffset))
-                .toEpochSecond(Helpers.zoneOffset)
+    fun restartBlockSync(startPoint: Point, listener: BlockChainDataListener) {
+        try {
+            log.info("${ if (::blockSync.isInitialized) "Restarting" else "Starting"} block sync from: {}", startPoint)
+            if (!checkNodeConnection()) {
+                log.error("Cannot restart block sync: node connection failed")
+                return
+            }
+            stopSync()
+            initialised = false
+            blockSync = BlockSync(
+                config.cnodeAddress,
+                config.cnodePort!!,
+                NetworkType.MAINNET.protocolMagic,
+                Constants.WELL_KNOWN_MAINNET_POINT
+            )
+            blockSync.startSync(startPoint, listener)
+            startChainAssistRoutines()
+        } catch (e: Exception) {
+            log.error("Failed to start block sync", e)
+            stopSync()
+            throw e
+        }
+    }
+
+    private fun startChainAssistRoutines() {
+        keepAliveJob = scope.launch {
+            log.debug("Keep-alive coroutine started")
+            var retryCount = 0
+            val maxRetries = 5
+            while (isActive) {
+                try {
+                    val randomNo: Int = Helpers.getRandomNumber(0, 60000)
+                    blockSync.sendKeepAliveMessage(randomNo)
+                    log.debug("Sent keep alive: {}", randomNo)
+                    retryCount = 0 // Reset retry count on success
+                    delay(keepAliveInterval.toKotlinDuration())
+                } catch (e: CancellationException) {
+                    // Happens regularly during chain rollbacks
+                    log.debug("Keep-alive coroutine cancelled")
+                } catch (e: Exception) {
+                    retryCount++
+                    if (retryCount >= maxRetries) {
+                        log.error("Failed to send keep-alive after $maxRetries attempts, shutting down", e)
+                        stopSync()
+                        exitProcess(1)
+                    } else {
+                        log.warn("Error sending keep-alive, retry $retryCount/$maxRetries", e)
+                        delay(Duration.ofSeconds(2).toKotlinDuration()) // Wait before retry
+                    }
+                }
+            }
+        }
+        // Monitor to track sync status, and detect/restart if blocks stop streaming
+        monitorJob = scope.launch {
+            log.debug("Monitor coroutine started")
+            var retryCount = 0
+            val maxRetries = 3
+            while (isActive) {
+                try {
+                    val gapSeconds = LocalDateTime.now().toEpochSecond(ZoneOffset.UTC) - (currentSlot - Helpers.slotConversionOffset)
+                    isSynced = gapSeconds < 1000
+                    val timeSinceLastBlock = System.currentTimeMillis() - lastBlockReceivedTimeMs
+                    log.debug("Sync status: isSynced={}, gapSeconds={}, inactive bsync={}", isSynced, gapSeconds, timeSinceLastBlock > maxBlockInactivityMs.toMillis())
+                    if (timeSinceLastBlock > maxBlockInactivityMs.toMillis()) {
+                        log.error("No blocks received for ${timeSinceLastBlock / 1000} seconds, restarting block sync (attempt ${retryCount + 1}/$maxRetries)")
+                        val initialisationState = determineInitialisationState(dbService.getSyncPointTime())
+                        restartBlockSync(initialisationState.chainStartPoint, blockChainDataListener)
+                        lastBlockReceivedTimeMs = System.currentTimeMillis()
+                        retryCount = 0 // Reset on success
+                    } else {
+                        log.debug("Time since last block: ${timeSinceLastBlock / 1000} seconds")
+                    }
+                    delay(syncCheckInterval.toKotlinDuration())
+                } catch (e: CancellationException) {
+                    log.debug("Monitor coroutine cancelled")
+                    throw e
+                } catch (e: Exception) {
+                    retryCount++
+                    log.error("Error checking block activity, retry $retryCount/$maxRetries", e)
+                    if (retryCount >= maxRetries) {
+                        log.error("Max retries reached, shutting down", e)
+                        stopSync()
+                        exitProcess(1)
+                    }
+                    delay(Duration.ofSeconds(5).toKotlinDuration()) // Wait before retry
+                }
+            }
         }
     }
 
     fun stopSync() {
-        blockSync.stop()
-    }
-
-    /* analyse block for latest and historical price updates */
-    private fun processBlock(block: Block) {
-        log.debug("Processing block... ${block.header.headerBody.blockNumber}")
-        val startTime = System.currentTimeMillis()
-
-        val slotDateTime = Helpers.convertSlotToDtg(block.header.headerBody.slot)
-        val timeUntilSynced = (LocalDateTime.now().toEpochSecond(Helpers.zoneOffset) - (slotDateTime.toEpochSecond(Helpers.zoneOffset)))
-        val isBootstrapping = timeUntilSynced > TimeUnit.MINUTES.toSeconds(15)
-        log.debug("Chain data still to synch: $timeUntilSynced [s], Is bootstrapping: $isBootstrapping")
-
-        val allSwaps = mutableListOf<Swap>()
-
-        val qualifiedTxMap = qualifyTransactions(block.header.headerBody.slot, block.transactionBodies, block.transactionWitness)
-
-        /* Compute swaps and add/update assets and latest prices */
-        qualifiedTxMap.forEach txloop@{ txDTO ->
-            val swaps = dexClassifierMap[txDTO.dexCredential]?.computeSwaps(txDTO)
-            log.debug("Computing swaps for dex: ${txDTO.dexCode}, ${txDTO.txHash}, Classifier: ${dexClassifierMap[txDTO.dexCredential]}, # swaps: ${swaps?.size}")
-
-            if (!swaps.isNullOrEmpty()) {
-                allSwaps.addAll(swaps)
-                /* persist latest price from last swap, insertOrUpdate on a timer */
-                latestPriceService.batchProcessLatestPrices(swaps.last())
-            } else {
-                // This occurs for minswap v2 tx currently
-                log.debug("HAD A NULL SWAP, MEANING 0 QUANITY VALUE, for txHash: ${txDTO.txHash}")
+        try {
+            if (::blockSync.isInitialized) {
+                log.debug("Stopping chain sync service")
+                blockSync.stop()
+                log.info("BlockSync stopped")
+                runBlocking {
+                    withTimeout(5000) {
+                        keepAliveJob?.cancelAndJoin()
+                        monitorJob?.cancelAndJoin()
+                        log.info("Coroutines terminated")
+                    }
+                }
+                keepAliveJob = null
+                monitorJob = null
             }
-        }
-
-        if (config.makeHistoricalData == true) {
-            historicalPriceService.batchProcessHistoricalPrices(allSwaps, block.header.headerBody.slot, isBootstrapping)
-        }
-
-        if (!isBootstrapping) {
-            log.info("Processed Block >> ${block.header.headerBody.blockNumber}, ${block.header.headerBody.blockHash}, ${block.header.headerBody.slot}, Total # of Txns >> ${block.transactionBodies.size}, Swaps >> ${allSwaps.size}, took: ${System.currentTimeMillis() - startTime} [ms]")
+            serviceLatch.countDown()
+        } catch (e: Exception) {
+            log.error("Error during stopSync", e)
         }
     }
 
-    /* Filter to transactions containing a DEX swap, resolve TxIn Refs to full input UTXO payloads */
-    fun qualifyTransactions(blockSlot: Long, transactionBodies: List<TransactionBody>, transactionWitnesses: List<Witnesses>): List<FullyQualifiedTxDTO> {
-        log.debug("transaction bodies: $transactionBodies")
-        val filteredTxAndWitnesses: List<Pair<TransactionBody, Witnesses>> = transactionBodies.zip(transactionWitnesses)
-            .filter { it.first.outputs
-                .map { o -> o.address }
-                .any { a -> dexPaymentCredentials.contains(Helpers.convertScriptAddressToPaymentCredential(a)) } }
-        log.debug("Number dex swap tx: ${filteredTxAndWitnesses.size}")
-
-        val qualifiedTx = filteredTxAndWitnesses
-            .map { (txBody, witnesses) ->
-                val dexCredentialMatched = txBody.outputs
-                    .map { Helpers.convertScriptAddressToPaymentCredential(it.address) }
-                    .first { dexPaymentCredentials.contains(it) }
-                FullyQualifiedTxDTO(
-                    txBody.txHash,
-                    Helpers.resolveDexNumFromCredential(dexCredentialMatched),
-                    dexCredentialMatched,
-                    blockSlot,
-                    runBlocking { chainDatabaseService.getInputUtxos(txBody.inputs) },
-                    txBody.outputs,
-                    witnesses)
-            }.filter {
-                it.inputUtxos.isNotEmpty()
-            }
-        log.debug("Number qualified tx: ${qualifiedTx.size}, ${qualifiedTx.map { it.txHash +"," + it.dexCode }}")
-        return qualifiedTx
+    fun signalBlockProcessed() {
+        blockLatch.countDown()
     }
+
+    fun signalRollbackProcessed() {
+        rollbackLatch.countDown()
+    }
+
+    fun getIsSynced(): Boolean = isSynced
 }

@@ -26,7 +26,7 @@
     <logger name="com.zaxxer.hikari" level="WARN" />
     <logger name="jdk.internal.reflect" level="WARN" />
     <logger name="org.ktorm" level="INFO" />
-    <logger name="tech.edgx.prise.indexer" level="INFO" />
+    <logger name="tech.edgx.prise.indexer" level="DEBUG" />
     <logger name="tech.edgx.prise.indexer.service.classifier.module" level="INFO"/>
 
     <root level="INFO">

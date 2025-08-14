@@ -12,7 +12,7 @@ class GetLatestPricesValidatorTest {
     @Test
     fun testLatestPrices_SingleAsset() {
         val errors = MapBindingResult(mapOf<Any,Any>(), "")
-        val request = LatestPricesRequest(symbol = setOf("lovelace"))
+        val request = LatestPricesRequest(symbols = setOf("ADA"))
         validator.validate(request, errors)
         assertTrue(!errors.hasErrors())
     }
@@ -20,17 +20,17 @@ class GetLatestPricesValidatorTest {
     @Test
     fun testLatestPrices_NoAsset() {
         val errors = MapBindingResult(mapOf<Any,Any>(), "")
-        val request = LatestPricesRequest(symbol = setOf(""))
+        val request = LatestPricesRequest(symbols = setOf(""))
         validator.validate(request, errors)
         assertTrue(errors.hasErrors())
-        assertTrue(errors.hasFieldErrors("symbol"))
+        assertTrue(errors.hasFieldErrors("symbols"))
         assertTrue(errors.fieldErrors.map { it.code }.contains("symbol.invalid"))
     }
 
     @Test
     fun testLatestPrices_HexAsset() {
         val errors = MapBindingResult(mapOf<Any,Any>(), "")
-        val request = LatestPricesRequest(symbol = setOf("533bb94a8850ee3ccbe483106489399112b74c905342cb1792a797a0494e4459"))
+        val request = LatestPricesRequest(symbols = setOf("533bb94a8850ee3ccbe483106489399112b74c905342cb1792a797a0494e4459"))
         validator.validate(request, errors)
         assertTrue(!errors.hasErrors())
     }
@@ -38,7 +38,7 @@ class GetLatestPricesValidatorTest {
     @Test
     fun testLatestPrices_MultipleAssets() {
         val errors = MapBindingResult(mapOf<Any,Any>(), "")
-        val request = LatestPricesRequest(symbol = setOf("533bb94a8850ee3ccbe483106489399112b74c905342cb1792a797a0494e4459","279c909f348e533da5808898f87f9a14bb2c3dfbbacccd631d927a3f534e454b","lovelace"))
+        val request = LatestPricesRequest(symbols = setOf("533bb94a8850ee3ccbe483106489399112b74c905342cb1792a797a0494e4459","279c909f348e533da5808898f87f9a14bb2c3dfbbacccd631d927a3f534e454b"))
         validator.validate(request, errors)
         assertTrue(!errors.hasErrors())
     }
@@ -46,10 +46,10 @@ class GetLatestPricesValidatorTest {
     @Test
     fun testLatestPrices_InvalidHexChar() {
         val errors = MapBindingResult(mapOf<Any,Any>(), "")
-        val request = LatestPricesRequest(symbol = setOf("533bb94a8850ee3ccbe483106489399112b74c905342cb1792a797a0494e445H"))
+        val request = LatestPricesRequest(symbols = setOf("533bb94a8850ee3ccbe483106489399112b74c905342cb1792a797a0494e445H"))
         validator.validate(request, errors)
         assertTrue(errors.hasErrors())
-        assertTrue(errors.hasFieldErrors("symbol"))
+        assertTrue(errors.hasFieldErrors("symbols"))
         assertTrue(errors.fieldErrors.map { it.code }.contains("symbol.invalid"))
     }
 }

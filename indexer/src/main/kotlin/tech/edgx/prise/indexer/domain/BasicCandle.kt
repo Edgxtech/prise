@@ -1,11 +1,12 @@
 package tech.edgx.prise.indexer.domain
 
 interface BasicCandle {
-    val symbol: String
+    val asset_id: Long
+    val quote_asset_id: Long
     val time: Long
-    val open: Double?
-    val high: Double?
-    val low: Double?
-    val close: Double?
-    val volume: Double?
+    val open: Float?
+    val high: Float?
+    val low: Float?
+    val close: Float?
+    val volume: Float?
 }

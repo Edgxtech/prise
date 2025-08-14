@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory
 import tech.edgx.prise.indexer.model.DexEnum
 import tech.edgx.prise.indexer.model.DexOperationEnum
 import tech.edgx.prise.indexer.model.FullyQualifiedTxDTO
-import tech.edgx.prise.indexer.model.dex.Swap
+import tech.edgx.prise.indexer.model.dex.SwapDTO
 import tech.edgx.prise.indexer.service.classifier.DexClassifier
 import tech.edgx.prise.indexer.service.classifier.common.ClassifierHelpers
 import tech.edgx.prise.indexer.service.classifier.common.DexClassifierEnum
@@ -47,8 +47,8 @@ object WingridersClassifier: DexClassifier {
         return listOf(POOL_SCRIPT_HASH)
     }
 
-    override fun computeSwaps(txDTO: FullyQualifiedTxDTO) : List<Swap> {
-            val swaps = mutableListOf<Swap>()
+    override fun computeSwaps(txDTO: FullyQualifiedTxDTO) : List<SwapDTO> {
+            val swapDTOS = mutableListOf<SwapDTO>()
 
             /* The first redeemer of the transaction contains index of other redeemer for the liquidity pool input */
             val lpInputRedeemerIdx: Int = txDTO.witnesses.redeemers
@@ -163,21 +163,21 @@ object WingridersClassifier: DexClassifier {
                 }
                 log.debug("Amounts, 1: $amount1, 2: $amount2")
 
-                val swap = Swap(
+                val swapDTO = SwapDTO(
                     txDTO.txHash,
                     txDTO.blockSlot,
                     DexEnum.WINGRIDERS.code,
                     asset1Unit,
                     asset2Unit,
-                    amount1,
-                    amount2,
+                    amount1.toBigDecimal(),
+                    amount2.toBigDecimal(),
                     swapDirection
                 )
-                log.debug("Computed swap: $swap")
-                swaps.add(swap)
+                log.debug("Computed swap: $swapDTO")
+                swapDTOS.add(swapDTO)
             }
-        log.debug("Computed swaps: $swaps")
-        return swaps
+        log.debug("Computed swaps: $swapDTOS")
+        return swapDTOS
     }
 
     /* Original method */

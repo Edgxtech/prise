@@ -39,6 +39,7 @@ build/
 .DS_Store
 
 *.properties
+!gradle-wrapper.properties
 !prise.example.properties
 !prise.example.docker.properties
 !application.properties
@@ -50,9 +51,18 @@ build/
 
 project-data
 
+archive/
 db_backups/
 k8s/
 slt
 sltdata/
+dependencies.txt
 
 .gradle/
+
+build
+!build-start.sh
+!start.sh
+
+*.env
+!.env.template

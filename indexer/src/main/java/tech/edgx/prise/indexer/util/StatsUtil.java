@@ -10,7 +10,8 @@ import java.util.concurrent.atomic.AtomicReference;
 public class StatsUtil {
 
     /** default significance level */
-    public static final double DEFAULT_SIGNIFICANCE_LEVEL = 0.85; // 0.95, E.g. 2 std deviations,
+//    public static final double DEFAULT_SIGNIFICANCE_LEVEL = 0.85; // 0.95, E.g. 2 std deviations,
+    public static final double DEFAULT_SIGNIFICANCE_LEVEL = 0.95; // 0.95, E.g. 2 std deviations,
 
     public boolean hasOutlier(Object ... values) {
         return hasOutlier(Arrays.asList(values));

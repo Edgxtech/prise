@@ -26,17 +26,20 @@ class SecurityConfig {
         configuration.allowedMethods = listOf("GET", "HEAD", "OPTIONS")
         configuration.allowedHeaders = listOf("Origin", "X-Requested-With", "Content-Type", "Accept")
         val source = UrlBasedCorsConfigurationSource()
-        source.registerCorsConfiguration("/api/**", configuration)
+        source.registerCorsConfiguration("/**", configuration)
         return source
     }
 
     @Bean
-    fun filterChain(httpSecurity: HttpSecurity): SecurityFilterChain? {
-        httpSecurity.cors(Customizer.withDefaults())
-            .csrf().and()
-            .authorizeRequests()
-            .mvcMatchers("/**").permitAll()
-            .mvcMatchers("/").permitAll()
+    fun filterChain(httpSecurity: HttpSecurity): SecurityFilterChain {
+        httpSecurity
+            .cors(Customizer.withDefaults())
+            .csrf { it.disable() }
+            .authorizeHttpRequests { auth ->
+                auth
+                    .requestMatchers("/**").permitAll()
+                    .requestMatchers("/").permitAll()
+            }
         return httpSecurity.build()
     }
 }

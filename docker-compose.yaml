@@ -1,0 +1,83 @@
+services:
+
+  postgres:
+    image: postgres:16.3
+    command: -p 5433
+    environment:
+      - POSTGRES_USER=${DATABASE_USERNAME}
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
+      - POSTGRES_DB=${DATABASE_NAME}
+      - POSTGRES_PORT=5433
+    env_file:
+      - .env
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./indexer/src/main/resources/db/migration:/docker-entrypoint-initdb.d
+    ports:
+      - "5433:5433"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DATABASE_USERNAME} -d ${DATABASE_NAME} -p 5433 -h localhost" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - prise
+
+  indexer:
+    image: edgxtech/prise-indexer:latest
+    environment:
+      - APP_DATASOURCE_URL=${DATABASE_URL}
+      - APP_DATASOURCE_USERNAME=${DATABASE_USERNAME}
+      - APP_DATASOURCE_PASSWORD=${DATABASE_PASSWORD}
+    env_file:
+      - .env
+    ports:
+      - "9108:9108"
+    restart: on-failure
+    networks:
+      prise:
+    depends_on:
+      - "postgres"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "200k"
+        max-file: "10"
+
+  app:
+    image: edgxtech/prise-app:latest
+    environment:
+      - SPRING_PROFILES_ACTIVE=default
+      - SPRING_DATASOURCE_URL=${DATABASE_URL}
+      - SPRING_DATASOURCE_USERNAME=${DATABASE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${DATABASE_PASSWORD}
+    ports:
+      - "8092:8092"
+    restart: on-failure
+    networks:
+      prise:
+    depends_on:
+      - "postgres"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "200k"
+        max-file: "10"
+
+  # optional - required if webserver and indexer are enabled for caching
+  redis:
+    image: redis:7.2.7-alpine
+    command: redis-server --maxmemory 1500mb --maxmemory-policy allkeys-lru
+    ports:
+      - "63799:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      prise:
+
+volumes:
+  postgres-data:
+  redis-data:
+
+networks:
+  prise:

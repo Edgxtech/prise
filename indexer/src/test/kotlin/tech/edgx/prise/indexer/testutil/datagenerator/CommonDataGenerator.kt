@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory
 import tech.edgx.prise.indexer.model.FullyQualifiedTxDTO
 import tech.edgx.prise.indexer.Base
 import tech.edgx.prise.indexer.model.DexEnum
+import tech.edgx.prise.indexer.processor.SwapProcessor
 import tech.edgx.prise.indexer.service.chain.ChainService
 import tech.edgx.prise.indexer.service.classifier.module.WingridersClassifier
 import tech.edgx.prise.indexer.testutil.TransactionBodyExcludeStrategy
@@ -27,6 +28,7 @@ class CommonDataGenerator: Base() {
     private val log = LoggerFactory.getLogger(javaClass)
     val transactionBodyGson: Gson = GsonBuilder().addDeserializationExclusionStrategy(TransactionBodyExcludeStrategy()).create()
     val chainService: ChainService by inject { parametersOf(config) }
+    val swapProcessor: SwapProcessor by inject { parametersOf(config) }
 
     @Ignore
     @Test
@@ -63,7 +65,7 @@ class CommonDataGenerator: Base() {
         val blockFlux = blockStreamer.stream()
         val subscription = blockFlux.subscribe { block: Block ->
             log.info("Received Block >> ${block.header.headerBody.blockNumber}, ${block.header.headerBody.blockHash}, slot: ${block.header.headerBody.slot}, Txns # >> ${block.transactionBodies.size}")
-            val qualifiedTx = chainService.qualifyTransactions(
+            val qualifiedTx = swapProcessor.qualifyTransactions(
                 block.header.headerBody.slot,
                 block.transactionBodies,
                 block.transactionWitness
@@ -175,7 +177,7 @@ class CommonDataGenerator: Base() {
         val blockFlux = blockStreamer.stream()
         val subscription = blockFlux.subscribe { block: Block ->
             log.info("Received Block >> ${block.header.headerBody.blockNumber}, ${block.header.headerBody.blockHash}, slot: ${block.header.headerBody.slot}, Txns # >> ${block.transactionBodies.size}")
-            val qualifiedTx = chainService.qualifyTransactions(block.header.headerBody.slot, block.transactionBodies, block.transactionWitness)
+            val qualifiedTx = swapProcessor.qualifyTransactions(block.header.headerBody.slot, block.transactionBodies, block.transactionWitness)
             val filteredDexSpecificTx = qualifiedTx
                 .filter { dexes.contains(it.dexCode) } // SPECIFIC DEXES
             allTxDTOs.addAll(filteredDexSpecificTx)
@@ -224,7 +226,7 @@ class CommonDataGenerator: Base() {
             File(inputFile).readText(Charsets.UTF_8).byteInputStream().bufferedReader().readLine(),
             object : TypeToken<ArrayList<Block>>() {}.type)
         val qualifiedTx: List<FullyQualifiedTxDTO> = blocks.flatMap {
-            chainService.qualifyTransactions(it.header.headerBody.slot, it.transactionBodies, it.transactionWitness)
+            swapProcessor.qualifyTransactions(it.header.headerBody.slot, it.transactionBodies, it.transactionWitness)
         }.filter { dexes.contains(it.dexCode) } // SPECIFIC DEXES
         println("QualifiedTx, #: ${qualifiedTx.size}")
         writer.println(Gson().toJson(qualifiedTx))

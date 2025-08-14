@@ -1,13 +1,12 @@
 package tech.edgx.prise.indexer.model.prices
 
-import tech.edgx.prise.indexer.domain.BasicCandle
-
 data class CandleDTO(
-    override val symbol: String,
-    override val time: Long,
-    override val open: Double?,
-    override val high: Double?,
-    override val low: Double?,
-    override val close: Double?,
-    override val volume: Double,
-    ) : BasicCandle
+    val asset_id: Long,
+    val quote_asset_id: Long,
+    val time: Long,
+    val open: Float,
+    val high: Float,
+    val low: Float,
+    val close: Float?,
+    val volume: Float
+)

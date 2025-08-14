@@ -66,9 +66,9 @@ open class BaseWithCarp: KoinTest {
                     single { LatestPriceService(get()) }
                     single { BaseCandleRepository(get()) }
                     single { CandleService(get()) }
-                    single { WeeklyCandleRepository(get()) }
-                    single { DailyCandleRepository(get()) }
-                    single { HourlyCandleRepository(get()) }
+//                    single { WeeklyCandleRepository(get()) }
+//                    single { DailyCandleRepository(get()) }
+//                    single { HourlyCandleRepository(get()) }
                     single { FifteenCandleRepository(get()) }
                     single { HistoricalPriceService(get()) }
 

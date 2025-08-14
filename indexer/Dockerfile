@@ -1,9 +1,10 @@
-FROM bellsoft/liberica-openjdk-alpine:11
+FROM openjdk:11-jdk-slim
 
-COPY build/libs/indexer-0.0.1.jar /app/
-ARG PROPERTIES
+WORKDIR /app
+COPY build/libs/indexer-*.jar /app/indexer.jar
+ARG PROPERTIES=prise.properties
 COPY ${PROPERTIES} /app/prise.properties
 
-CMD ["java", "-Xmx200m", "-jar", "/app/indexer-0.0.1.jar", "-config", "/app/prise.properties"]
+CMD ["java", "-jar", "/app/indexer.jar", "-config", "/app/prise.properties"]
 
 EXPOSE 9108

@@ -4,14 +4,14 @@ import com.bloxbean.cardano.client.crypto.Bech32
 import com.bloxbean.cardano.client.util.HexUtil
 import org.slf4j.LoggerFactory
 import tech.edgx.prise.indexer.domain.Asset
-import tech.edgx.prise.indexer.domain.LatestCandlesView
 import tech.edgx.prise.indexer.model.DexEnum
-import tech.edgx.prise.indexer.model.prices.CandleDTO
 import tech.edgx.prise.indexer.service.classifier.module.*
+import java.math.BigDecimal
 import java.math.BigInteger
 import java.time.*
 import java.time.temporal.ChronoUnit
 import java.time.temporal.TemporalAdjusters
+import javax.xml.bind.DatatypeConverter
 import kotlin.math.pow
 
 object Helpers {
@@ -33,6 +33,8 @@ object Helpers {
     const val ADA_ASSET_UNIT = "lovelace"
     const val ADA_ASSET_NAME = "ada"
     const val ADA_ASSET_DECIMALS = 6
+
+    //const val CANDLE_PERSIST_BATCH_SIZE = 100
 
     val adaAsset = Asset.invoke {
         unit = ADA_ASSET_UNIT
@@ -77,25 +79,14 @@ object Helpers {
         return null
     }
 
-    fun getDexName(dexNumber: Int): String {
-        when (dexNumber) {
-            0 -> { return DexEnum.WINGRIDERS.nativeName }
-            1 -> { return DexEnum.SUNDAESWAP.nativeName }
-            2 -> { return DexEnum.MINSWAP.nativeName }
-            3 -> { return DexEnum.MINSWAPV2.nativeName}
-        }
-        throw Exception("No mapping for dex number $dexNumber")
+    fun calculatePriceInAsset1(amount1: BigDecimal, decimals1: Int, amount2: BigDecimal, decimals2: Int): Float {
+        val amount1_dec_adjusted = if (decimals1 != 0) amount1.toDouble().div(10.0.pow(decimals1)) else amount1.toDouble()
+        val amount2_dec_adjusted = if (decimals2 != 0) amount2.toDouble().div(10.0.pow(decimals2)) else amount2.toDouble()
+        return amount1_dec_adjusted.div(amount2_dec_adjusted).toFloat()
     }
 
-    fun getDexNumber(dexName: String): Int {
-        when (dexName) {
-            DexEnum.WINGRIDERS.nativeName -> { return 0 }
-            DexEnum.SUNDAESWAP.nativeName -> { return 1 }
-            DexEnum.MINSWAP.nativeName -> { return 2 }
-            DexEnum.MINSWAPV2.nativeName -> { return 3 }
-        }
-        throw Exception("No mapping for dex name $dexName")
-    }
+    fun getDexName(dexNumber: Int): String = DexEnum.fromId(dexNumber).nativeName
+    fun getDexNumber(dexName: String): Int = DexEnum.fromName(dexName).code
 
     fun convertResoDuration(resolution: String?): Duration {
         val resoDuration = when (resolution) {
@@ -163,21 +154,19 @@ object Helpers {
         }
     }
 
-    fun convertCandleViewToCandleDTO(candle: LatestCandlesView?): CandleDTO? {
-        return candle?.let {
-            CandleDTO(
-                it.symbol,
-                it.time,
-                it.open,
-                it.high,
-                it.low,
-                it.close,
-                it.volume
-            )
-        }
-    }
-
     fun getRandomNumber(min: Int, max: Int): Int {
         return (Math.random() * (max - min) + min).toInt()
+    }
+
+    // Convert hex string to ByteArray
+    fun hexToBinary(hex: String): ByteArray {
+        require(hex.length == 64) { "tx_hash must be 64 characters (32 bytes in hex)" }
+        return DatatypeConverter.parseHexBinary(hex)
+    }
+
+    // Convert ByteArray to hex string
+    fun binaryToHex(binary: ByteArray): String {
+        require(binary.size == 32) { "tx_hash must be 32 bytes" }
+        return DatatypeConverter.printHexBinary(binary).lowercase()
     }
 }

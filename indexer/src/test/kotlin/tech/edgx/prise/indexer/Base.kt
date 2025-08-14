@@ -1,5 +1,7 @@
 package tech.edgx.prise.indexer
 
+import com.github.benmanes.caffeine.cache.Cache
+import com.github.benmanes.caffeine.cache.Caffeine
 import com.zaxxer.hikari.HikariDataSource
 import io.mockk.mockkClass
 import org.junit.jupiter.api.AfterAll
@@ -15,6 +17,7 @@ import org.koin.test.KoinTest
 import org.koin.test.junit5.mock.MockProviderExtension
 import tech.edgx.prise.indexer.config.Config
 import tech.edgx.prise.indexer.config.Configurer
+import tech.edgx.prise.indexer.domain.Asset
 import tech.edgx.prise.indexer.repository.*
 import tech.edgx.prise.indexer.service.AssetService
 import tech.edgx.prise.indexer.service.CandleService
@@ -32,6 +35,7 @@ import tech.edgx.prise.indexer.service.dataprovider.module.yacistore.YaciStoreSe
 import tech.edgx.prise.indexer.service.monitoring.MonitoringService
 import tech.edgx.prise.indexer.service.price.HistoricalPriceService
 import tech.edgx.prise.indexer.service.price.LatestPriceService
+import java.util.concurrent.TimeUnit
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 open class Base: KoinTest {
@@ -63,11 +67,18 @@ open class Base: KoinTest {
                     single { LatestPriceService(get()) }
                     single { BaseCandleRepository(get()) }
                     single { CandleService(get()) }
-                    single { WeeklyCandleRepository(get()) }
-                    single { DailyCandleRepository(get()) }
-                    single { HourlyCandleRepository(get()) }
+//                    single { WeeklyCandleRepository(get()) }
+//                    single { DailyCandleRepository(get()) }
+//                    single { HourlyCandleRepository(get()) }
                     single { FifteenCandleRepository(get()) }
                     single { HistoricalPriceService(get()) }
+
+                    single<Cache<String, Asset>> {
+                        Caffeine.newBuilder()
+                            .expireAfterWrite(10, TimeUnit.MINUTES)
+                            .maximumSize(5000)
+                            .build()
+                    }
 
                     /* ChainDbService(s) */
                     single(named(ChainDatabaseServiceEnum.koios.name)) { KoiosService(get()) } bind ChainDatabaseService::class

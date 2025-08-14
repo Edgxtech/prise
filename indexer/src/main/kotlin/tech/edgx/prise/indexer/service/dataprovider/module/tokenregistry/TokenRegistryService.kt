@@ -19,7 +19,7 @@ class TokenRegistryService: TokenMetadataService {
     override fun getDecimals(units: List<String>): List<SubjectDecimalPair> {
         val values = mapOf("subjects" to units, "properties" to listOf("subject","decimals"))
         val requestBody = Gson().toJson(values)
-        log.trace("Req body $requestBody")
+        log.trace("Req body {}", requestBody)
         val client = HttpClient.newBuilder().build();
         val request = buildPostRequest(requestBody)
         var response = client.send(request, HttpResponse.BodyHandlers.ofString());

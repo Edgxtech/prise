@@ -1,20 +1,18 @@
 package tech.edgx.prise.webserver.model.prices
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 import tech.edgx.prise.webserver.util.Helpers
 
-@ApiModel(value = "Retrieve latest prices of Cardano Native Tokens")
+@Schema(description = "Retrieve latest prices of Cardano Native Tokens")
 data class LatestPricesRequest(
+    @Schema(
+        description = "List of asset/quote pairs (e.g., 'asset_unit:quote_unit'). If empty, returns latest prices for all pairs. Quote defaults to 'ADA' if not specified.",
+        example = "[\"279c909f348e533da5808898f87f9a14bb2c3dfbbacccd631d927a3f534e454b\", \"533bb94a8850ee3ccbe483106489399112b74c905342cb1792a797a0494e4459\", \"da8c30857834c6ae7203935b89278c532b3995245295456f993e1d244c51\"]",
+        type = "set",
+        required = false
+    )
+    val symbols: Set<String> = emptySet(),
 
-    @ApiModelProperty(
-        value = "Cardano Native Token Id (hexpolicy+hexname) or (lovelace) for ADA",
-        example = "533bb94a8850ee3ccbe483106489399112b74c905342cb1792a797a0494e4459,279c909f348e533da5808898f87f9a14bb2c3dfbbacccd631d927a3f534e454b,lovelace",
-        dataType = "set",
-        required = false)
-    var symbol: Set<String> = HashSet(),
-
-    /* Not a user option for the time being */
-    @ApiModelProperty(hidden = true)
-    var network: Int = Helpers.MAINNET_ID
+    @Schema(hidden = true)
+    val network: Int = Helpers.MAINNET_ID
 )
