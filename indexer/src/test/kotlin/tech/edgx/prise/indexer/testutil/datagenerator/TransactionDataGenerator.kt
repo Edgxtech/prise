@@ -12,19 +12,19 @@ import org.junit.jupiter.api.Test
 import org.koin.core.parameter.parametersOf
 import org.koin.test.inject
 import org.slf4j.LoggerFactory
-import tech.edgx.prise.indexer.BaseWithCarp
+import tech.edgx.prise.indexer.Base
+import tech.edgx.prise.indexer.config.Config
 import tech.edgx.prise.indexer.model.DexEnum
 import tech.edgx.prise.indexer.processor.SwapProcessor
-import tech.edgx.prise.indexer.repository.CarpRepository
 import tech.edgx.prise.indexer.service.chain.ChainService
 import java.io.File
 import java.io.PrintWriter
 
-class TransactionDataGenerator: BaseWithCarp() {
+class TransactionDataGenerator: Base() {
     private val log = LoggerFactory.getLogger(javaClass)
+    val config: Config by inject()
     val chainService: ChainService by inject { parametersOf(config) }
     val swapProcessor: SwapProcessor by inject { parametersOf(config) }
-    val carpRepository: CarpRepository by inject { parametersOf(config.carpDatabase) }
 
     @Ignore
     @Test
@@ -40,15 +40,11 @@ class TransactionDataGenerator: BaseWithCarp() {
         //val txHash = "3cae4bea2849f1cc8546a96058320f0deb949289cbd58295cfc7f50dab71f15a"; val txSlot = 112501470L
         val txHash = "24983065abb54ff66368fda2c32372325bac4a1320452fd7643210699e76c6ae"; val txSlot = 130934066L
         val dexName = DexEnum.MINSWAPV2.nativeName
-        val thisBlock = carpRepository.getBlockNearestToSlot(txSlot)
-        val previousBlock = thisBlock?.height?.minus( 1)?.let { carpRepository.getBlockByHeight(it) }
-        println("This block: $thisBlock, Previous block: $previousBlock")
-        val startPoint = previousBlock?.slot?.let { Point(it, previousBlock.hash) }
-
+        /* Pick a point prior to but close to the tx needed */
+        val startPoint = Point(130934012L, "89a90c5dc97606da5478566bcd62dfe91c3ed8323a791167eba7257285e7cba4")
         val outputFile = "src/test/resources/testdata/$dexName/transaction_qualified_${txHash}.json"
-
         val writer: PrintWriter = File(outputFile).printWriter()
-        var processedBlock = false
+        var processedTx = false
         val blockStreamer = BlockStreamer.fromPoint(config.cnodeAddress, config.cnodePort!!, startPoint,  NetworkType.MAINNET.n2NVersionTable)
         val blockFlux = blockStreamer.stream()
         val subscription = blockFlux.subscribe { block: Block ->
@@ -62,13 +58,12 @@ class TransactionDataGenerator: BaseWithCarp() {
                 writer.println(Gson().toJson(filteredDexSpecificTx))
                 writer.flush()
                 writer.close()
-
+                processedTx = true
             }
-            processedBlock = true
         }
         runBlocking {
             while(true) {
-                if (processedBlock) {
+                if (processedTx) {
                     break
                 }
                 delay(100)

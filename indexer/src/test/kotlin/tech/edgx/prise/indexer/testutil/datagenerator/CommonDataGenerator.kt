@@ -16,6 +16,7 @@ import org.koin.test.inject
 import org.slf4j.LoggerFactory
 import tech.edgx.prise.indexer.model.FullyQualifiedTxDTO
 import tech.edgx.prise.indexer.Base
+import tech.edgx.prise.indexer.config.Config
 import tech.edgx.prise.indexer.model.DexEnum
 import tech.edgx.prise.indexer.processor.SwapProcessor
 import tech.edgx.prise.indexer.service.chain.ChainService
@@ -27,6 +28,7 @@ import java.io.PrintWriter
 class CommonDataGenerator: Base() {
     private val log = LoggerFactory.getLogger(javaClass)
     val transactionBodyGson: Gson = GsonBuilder().addDeserializationExclusionStrategy(TransactionBodyExcludeStrategy()).create()
+    val config: Config by inject()
     val chainService: ChainService by inject { parametersOf(config) }
     val swapProcessor: SwapProcessor by inject { parametersOf(config) }
 
@@ -42,7 +44,7 @@ class CommonDataGenerator: Base() {
         //val txHash = "72875a21809e7c75d0e98e4751171eafc66847dc2614fa70208cfc067d565d90"; val txSlot = 116200902L
         //val txHash = "b02042417e8fa4e2386b0e47c85e3f2d18e3483196c861767758ccba52e75730"; val txSlot = 116978969L
         //val txHash = "3cae4bea2849f1cc8546a96058320f0deb949289cbd58295cfc7f50dab71f15a"; val txSlot = 112501470L
-//        val txHash = "24983065abb54ff66368fda2c32372325bac4a1320452fd7643210699e76c6ae"; val txSlot = 130934066L
+        //val txHash = "24983065abb54ff66368fda2c32372325bac4a1320452fd7643210699e76c6ae"; val txSlot = 130934066L
         //val txHash = "d3aba39861706b25c5a8c33ce48889be998405a55b646002ee2f085e5a9fcd14"; val txSlot = 132222216L
         //val txHash = "269a8408bb1d47087a164267fcc6488dd65754d31b9c0f1547e63d6850ed35a4"; val txSlot = 132208958L
         //val txHash = "505bd29029f181a40f2e6d6c59a3628086d6161c358a59e08f0d253b90f8097b"; val txSlot = 132266099L

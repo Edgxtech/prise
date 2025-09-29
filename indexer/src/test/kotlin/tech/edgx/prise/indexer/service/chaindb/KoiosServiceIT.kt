@@ -16,12 +16,13 @@ import java.math.BigInteger
 import java.time.Duration
 import java.time.LocalDateTime
 import java.util.*
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class KoiosServiceIT: Base() {
 
-    val koiosService: ChainDatabaseService by inject(named("koios")) { parametersOf(config) }
+    val koiosService: ChainDatabaseService by inject(named("koios")) { parametersOf() }
 
     @Test
     fun getInputUtxos() {
@@ -77,6 +78,20 @@ class KoiosServiceIT: Base() {
         val txOuts = koiosService.getInputUtxos(txIns)
         println("Retrieved txIn details, #: ${txOuts.size}, $txOuts")
         assertTrue(txOuts.isEmpty())
+    }
+
+    @Test
+    fun getInputUtxos_4() {
+        val txIns = setOf(
+            TransactionInput("675bd2d65926c8049a794926505b578e3c606cea0ec6199a7f189a67f2cbf895", 3),
+            TransactionInput("701e5d91a02941feb4232539670b13d9157656c6b0587c4b43d81343379728ab", 1),
+            TransactionInput("c7146c351e534570bd1ec63ce4cd1b43e713b331c7dc6a4056c2be48f48fdcbe", 0),
+            TransactionInput("3799ed2ff5413caa7c58d50cb18ff7bebabee74e377d9f97e8424ec838e241f5", 2),
+        )
+        val txOuts = runBlocking { koiosService.getInputUtxos(txIns) }
+        println("Retrieved txIn details, #: ${txOuts.size}, $txOuts")
+        assertTrue(txOuts.isNotEmpty())
+        assertEquals(4, txOuts.size)
     }
 
     @Test

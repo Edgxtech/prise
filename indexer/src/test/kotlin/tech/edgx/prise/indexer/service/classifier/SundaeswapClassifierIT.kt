@@ -19,6 +19,7 @@ import org.koin.test.inject
 import tech.edgx.prise.indexer.model.DexEnum
 import tech.edgx.prise.indexer.model.dex.SwapDTO
 import tech.edgx.prise.indexer.Base
+import tech.edgx.prise.indexer.config.Config
 import tech.edgx.prise.indexer.processor.SwapProcessor
 import tech.edgx.prise.indexer.service.chain.ChainService
 
@@ -29,6 +30,7 @@ import kotlin.test.assertTrue
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class SundaeswapClassifierIT: Base() {
 
+    val config: Config by inject()
     val chainService: ChainService by inject { parametersOf(config) }
     val swapProcessor: SwapProcessor by inject { parametersOf(config) }
     val sundaeswapClassifier: DexClassifier by inject(named("sundaeswapClassifier"))
@@ -259,87 +261,6 @@ class SundaeswapClassifierIT: Base() {
             blockSync.stop()
         }
     }
-
-//    @Test
-//    fun computeSwaps_FromChainSync_TimePeriod() {
-//        val fromSlot = TestHelpers.slot_01Jan24
-//        val untilSlot = TestHelpers.slot_01Jan24_0010
-//        val reader = File("src/test/resources/testdata/sundaeswap/swaps_0000Z01Jan24_0100Z01Jan24.csv")
-//            .readText(Charsets.UTF_8).byteInputStream().bufferedReader()
-//        reader.readLine()
-//        val knownSwaps: List<Swap> = reader.lineSequence()
-//            .filter { it.isNotBlank() }
-//            .map {
-//                val parts = it.split(",")
-//                Swap(txHash = parts[0], parts[1].toLong(), parts[2].toInt(), parts[3], parts[4], parts[5].toBigDecimal(), parts[6].toBigDecimal(), parts[7].toInt() )
-//            }
-//            .filter { it.slot in fromSlot..untilSlot } // Filter to 01 Jan 24 00:00 to 00:10 10 mins only
-//            .toList()
-//        println("Last known swap: ${knownSwaps.last()}, timestamp: ${LocalDateTime.ofEpochSecond(knownSwaps.last().slot - Helpers.slotConversionOffset, 0, Helpers.zoneOffset)}")
-//
-//        // start sync from 01 Jan 24 and compute all swaps for the time period
-//        var allSwaps = mutableListOf<Swap>()
-//        val blockSync = BlockSync(config.cnodeAddress,  config.cnodePort!!, NetworkType.MAINNET.protocolMagic, Constants.WELL_KNOWN_MAINNET_POINT)
-//        blockSync.startSync(TestHelpers.point_01Jan24,
-//            object : BlockChainDataListener {
-//                override fun onBlock(era: Era, block: Block, transactions: MutableList<Transaction>) {
-//                    println("Received Block >> ${block.header.headerBody.blockNumber}, ${block.header.headerBody.blockHash}, slot: ${block.header.headerBody.slot}, Txns # >> ${block.transactionBodies.size}")
-//
-//                    val qualifiedTxMap = swapProcessor.qualifyTransactions(
-//                        block.header.headerBody.slot,
-//                        block.transactionBodies,
-//                        block.transactionWitness
-//                    )
-//
-//                    /* Compute swaps and add/update assets and latest prices */
-//                    qualifiedTxMap.forEach txloop@{ txDTO -> //dexMatched,
-//                        if (sundaeswapClassifier.getPoolScriptHash()
-//                                .contains(txDTO.dexCredential)
-//                        ) { // Ignore other dex swaps for this test
-//                            println("Computing swaps for ${txDTO.dexCredential}, TX: ${txDTO.txHash}, Dex: ${txDTO.dexCode}")
-//                            val swaps = sundaeswapClassifier.computeSwaps(txDTO)
-//                            if (swaps.isNotEmpty()) {
-//                                allSwaps.addAll(swaps)
-//                            }
-//                        }
-//                    }
-//                }
-//            }
-//        )
-//        var runningSwapsCount = 0
-//        runBlocking {
-//            while(true) {
-//                if (allSwaps.isNotEmpty() && allSwaps.size > runningSwapsCount) {
-//                    println("Running # swaps: ${allSwaps.size}, Up to slot: ${allSwaps.last().slot}, syncing until: $untilSlot")
-//                    runningSwapsCount = allSwaps.size
-//                }
-//
-//                if (allSwaps.isNotEmpty() && allSwaps.last().slot > untilSlot) {
-//                    break
-//                }
-//                delay(100)
-//            }
-//            blockSync.stop()
-//        }
-//
-//        // Sort them exactly the same way since multiple swaps per tx, and multiple tx per block
-//        val orderedComputedSwaps = allSwaps.sortedBy { it.slot }.sortedBy { it.txHash }.sortedBy { it.operation }.sortedBy { it.amount1 }.filter { it.slot < untilSlot }
-//        val orderedKnownSwaps = knownSwaps.sortedBy { it.slot }.sortedBy { it.txHash }.sortedBy { it.operation }.sortedBy { it.amount1 }
-//
-//        println("Comparing known swaps #: ${orderedKnownSwaps.size} to computedSwaps #: ${orderedComputedSwaps.size}")
-//        assertEquals(orderedKnownSwaps.size, orderedComputedSwaps.size,)
-//        orderedKnownSwaps.zip(orderedComputedSwaps).forEach {
-//            println("Comparing: ${it.first} to ${it.second}")
-//            assertTrue { it.first.txHash == it.second.txHash }
-//            assertTrue { it.first.slot == it.second.slot }
-//            assertTrue { it.first.dex == it.second.dex }
-//            assertTrue { it.first.asset1Unit == it.second.asset1Unit }
-//            assertTrue { it.first.asset2Unit == it.second.asset2Unit }
-//            assertTrue { it.first.amount1 == it.second.amount1 }
-//            assertTrue { it.first.amount2 == it.second.amount2 }
-//            assertTrue { it.first.operation == it.second.operation }
-//        }
-//    }
 
     @Test
     fun computeSwaps_SingleTransaction_1_Reactive() {

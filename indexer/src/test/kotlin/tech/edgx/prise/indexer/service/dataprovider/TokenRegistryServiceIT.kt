@@ -11,7 +11,6 @@ import tech.edgx.prise.indexer.Base
 import tech.edgx.prise.indexer.service.dataprovider.common.TokenMetadataServiceEnum
 import tech.edgx.prise.indexer.testutil.TestHelpers
 import java.io.File
-import java.util.*
 
 class TokenRegistryServiceIT: Base() {
 
@@ -20,7 +19,6 @@ class TokenRegistryServiceIT: Base() {
     @Test
     fun bulkGetDecimals() {
         val response: List<SubjectDecimalPair> = tokenMetadataService.getDecimals(TestHelpers.test_units_a.map { it.first })
-        //val decimals: List<Decimals> = response.map { r -> r.decimals!! }
         TestHelpers.test_units_a.forEach { testToken ->
             val responseForToken = response.filter { it.subject==testToken.first }.firstOrNull()
             println("TestToken: $testToken VS Response: $responseForToken")
