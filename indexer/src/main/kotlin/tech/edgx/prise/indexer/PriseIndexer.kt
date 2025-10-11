@@ -66,7 +66,7 @@ val priseModules = module {
 
     single { DbService() }
 
-    single { EventBus() }
+    single { EventBus(get()) }
     single { SwapProcessor(get()) }
     single { PriceProcessor(get()) }
     single { PersistenceService(get()) }
