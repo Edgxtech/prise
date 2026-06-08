@@ -1,5 +1,7 @@
 package tech.edgx.prise.indexer.testutil.datagenerator
 
+import org.junit.jupiter.api.Tag
+
 import com.bloxbean.cardano.yaci.core.common.NetworkType
 import com.bloxbean.cardano.yaci.core.model.Block
 import com.bloxbean.cardano.yaci.core.protocol.chainsync.messages.Point
@@ -25,6 +27,7 @@ import tech.edgx.prise.indexer.testutil.TransactionBodyExcludeStrategy
 import java.io.File
 import java.io.PrintWriter
 
+@Tag("integration")
 class CommonDataGenerator: Base() {
     private val log = LoggerFactory.getLogger(javaClass)
     val transactionBodyGson: Gson = GsonBuilder().addDeserializationExclusionStrategy(TransactionBodyExcludeStrategy()).create()

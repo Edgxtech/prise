@@ -29,7 +29,8 @@ class KoiosService(private val config: Config) : KoinComponent, ChainDatabaseSer
     val blockfrostService: ChainDatabaseService by inject(named("blockfrost")) { parametersOf(config) }
 
     val client = HttpClient.newBuilder().build()
-    val MAX_ATTEMPTS = 500
+    // Overridable via -Dprise.maxProviderAttempts so tests can fail fast.
+    val MAX_ATTEMPTS = System.getProperty("prise.maxProviderAttempts")?.toIntOrNull() ?: 500
 
     override fun getBlockNearestToSlot(slot: Long): BlockView? {
         // Temporarily delegating to blockfrost until better solution is available

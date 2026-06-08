@@ -1,5 +1,7 @@
 package tech.edgx.prise.indexer.service.dataprovider
 
+import org.junit.jupiter.api.Tag
+
 import com.google.gson.Gson
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -12,6 +14,7 @@ import tech.edgx.prise.indexer.service.dataprovider.common.TokenMetadataServiceE
 import tech.edgx.prise.indexer.testutil.TestHelpers
 import java.io.File
 
+@Tag("integration")
 class TokenRegistryServiceIT: Base() {
 
     val tokenMetadataService: TokenMetadataService by inject(named(TokenMetadataServiceEnum.tokenRegistry.name)) //"tokenRegistryNativeTokenDataGetter"

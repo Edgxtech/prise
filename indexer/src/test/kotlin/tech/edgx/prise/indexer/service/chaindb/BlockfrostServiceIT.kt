@@ -1,5 +1,7 @@
 package tech.edgx.prise.indexer.service.chaindb
 
+import org.junit.jupiter.api.Tag
+
 import com.bloxbean.cardano.yaci.core.model.TransactionInput
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
@@ -14,6 +16,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Tag("integration")
 class BlockfrostServiceIT: Base() {
 
     val blockfrostService: ChainDatabaseService by inject(named("blockfrost")) { parametersOf() }

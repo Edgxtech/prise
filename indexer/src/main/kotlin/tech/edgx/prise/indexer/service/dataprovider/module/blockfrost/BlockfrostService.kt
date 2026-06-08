@@ -22,8 +22,9 @@ import java.util.concurrent.TimeUnit
 class BlockfrostService(private val config: Config) : KoinComponent, ChainDatabaseService {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    val MAX_BLOCK_BY_SLOT_ATTEMPTS = 250
-    val MAX_UTXO_ATTEMPTS = 100
+    // Overridable via -Dprise.maxProviderAttempts so tests can fail fast.
+    val MAX_BLOCK_BY_SLOT_ATTEMPTS = System.getProperty("prise.maxProviderAttempts")?.toIntOrNull() ?: 250
+    val MAX_UTXO_ATTEMPTS = System.getProperty("prise.maxProviderAttempts")?.toIntOrNull() ?: 100
     val MAX_RETRIES_PER_REQUEST = 5
     val RETRY_DELAY_MS = 1000L
     val client = HttpClient.newBuilder().build()

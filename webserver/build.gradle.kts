@@ -60,6 +60,27 @@ tasks.withType<Test> {
     useJUnitPlatform()
 }
 
+// Default `test` task runs only fast, hermetic unit tests.
+// Integration tests (tagged "integration") require a running webserver
+// (ApiControllerIT hits http://localhost:8092) and fail with ConnectException
+// when it isn't up, so they are excluded from `test` and run on-demand via
+// `integrationTest`.
+tasks.named<Test>("test") {
+    useJUnitPlatform {
+        excludeTags("integration")
+    }
+}
+
+tasks.register<Test>("integrationTest") {
+    description = "Runs integration tests that require a running webserver."
+    group = "verification"
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    useJUnitPlatform {
+        includeTags("integration")
+    }
+}
+
 sourceSets {
     main {
         java.srcDirs("src/main/java", "src/main/kotlin")

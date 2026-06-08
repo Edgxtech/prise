@@ -5,7 +5,7 @@
 
 # Prise - Cardano Native Token Price Indexer
 
-Kotlin based indexer as used by: [https://realfi.info](https://realfi.info). Provides historical and latest prices for all Cardano Native Tokens (CNT). Uses;
+Kotlin based indexer providing historical and latest prices for all Cardano Native Tokens (CNT). Uses;
 -   Bloxbean [Yaci](https://github.com/bloxbean/yaci) JVM based Cardano mini-protocols library
 -   Blockbean [YaciStore](https://github.com/bloxbean/yaci-store) general purpose indexer, only for txOutput resolution (modular option)
 -   dcSpark [Carp](https://github.com/dcSpark/carp) general purpose indexer, only for txOutput resolution (modular option)

@@ -39,6 +39,7 @@ class SwapProcessor(val config: Config) : KoinComponent {
         val filteredTxAndWitnesses = transactionBodies.zip(transactionWitnesses)
             .filter { it.first.outputs.any { o -> dexClassifierMap.keys.contains(Helpers.convertScriptAddressToPaymentCredential(o.address)) } }
         return filteredTxAndWitnesses.map { (txBody, witnesses) ->
+            log.debug("txBody Inputs: {}, {}", txBody.txHash, txBody.inputs)
             val dexCredentialMatched = txBody.outputs
                 .map { Helpers.convertScriptAddressToPaymentCredential(it.address) }
                 .first { dexClassifierMap.keys.contains(it) }

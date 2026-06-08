@@ -14,7 +14,7 @@ class ConfigTest {
     @Test
     fun validateProperties_1() {
         val properties = Properties()
-        val input: InputStream = File("src/test/resources/prise.withcarp.properties").inputStream()
+        val input: InputStream = File("src/test/resources/prise.withcarp.example.properties").inputStream()
         properties.load(input)
         val helpers = ConfigHelpers(properties)
         assertDoesNotThrow { Configurer.validateProperties(helpers) }
@@ -23,7 +23,7 @@ class ConfigTest {
     @Test
     fun validateProperties_2() {
         val properties = Properties()
-        val input: InputStream = File("src/test/resources/prise.withcarp.properties").inputStream()
+        val input: InputStream = File("src/test/resources/prise.withcarp.example.properties").inputStream()
         properties.load(input)
         val helpers = ConfigHelpers(properties)
         properties.setProperty(Constants.LATEST_PRICES_UPDATE_INTERVAL_PROPERTY, "")
@@ -33,7 +33,7 @@ class ConfigTest {
     @Test
     fun validateProperties_3() {
         val properties = Properties()
-        val input: InputStream = File("src/test/resources/prise.withcarp.properties").inputStream()
+        val input: InputStream = File("src/test/resources/prise.withcarp.example.properties").inputStream()
         properties.load(input)
         val helpers = ConfigHelpers(properties)
         properties.setProperty(Constants.CHAIN_DATABASE_SERVICE_MODULE_PROPERTY, ChainDatabaseServiceEnum.koios.name)
@@ -49,7 +49,7 @@ class ConfigTest {
     @Test
     fun validateProperties_4() {
         val properties = Properties()
-        val input: InputStream = File("src/test/resources/prise.properties").inputStream()
+        val input: InputStream = File("src/test/resources/prise.example.properties").inputStream()
         properties.load(input)
         val helpers = ConfigHelpers(properties)
         assertDoesNotThrow { Configurer.validateProperties(helpers) }
@@ -58,7 +58,7 @@ class ConfigTest {
     @Test
     fun validateProperties_5() {
         val properties = Properties()
-        val input: InputStream = File("src/test/resources/prise.properties").inputStream()
+        val input: InputStream = File("src/test/resources/prise.example.properties").inputStream()
         properties.load(input)
         val helpers = ConfigHelpers(properties)
         properties.setProperty(Constants.CHAIN_DATABASE_SERVICE_MODULE_PROPERTY, ChainDatabaseServiceEnum.yacistore.name)

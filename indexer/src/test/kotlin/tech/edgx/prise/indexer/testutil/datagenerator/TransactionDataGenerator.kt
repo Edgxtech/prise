@@ -1,5 +1,7 @@
 package tech.edgx.prise.indexer.testutil.datagenerator
 
+import org.junit.jupiter.api.Tag
+
 import com.bloxbean.cardano.yaci.core.common.NetworkType
 import com.bloxbean.cardano.yaci.core.model.Block
 import com.bloxbean.cardano.yaci.core.protocol.chainsync.messages.Point
@@ -20,6 +22,7 @@ import tech.edgx.prise.indexer.service.chain.ChainService
 import java.io.File
 import java.io.PrintWriter
 
+@Tag("integration")
 class TransactionDataGenerator: Base() {
     private val log = LoggerFactory.getLogger(javaClass)
     val config: Config by inject()

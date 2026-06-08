@@ -1,5 +1,7 @@
 package tech.edgx.prise.webserver.controller
 
+import org.junit.jupiter.api.Tag
+
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
@@ -18,6 +20,7 @@ import java.net.http.HttpResponse
 import kotlin.test.assertEquals
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Tag("integration")
 class ApiControllerIT {
 
     val client = HttpClient.newBuilder().build()

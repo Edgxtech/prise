@@ -112,8 +112,10 @@ object WingridersClassifier: DexClassifier {
                 /* Match input for the swap, is specified by the index provided in redeemer */
                 log.debug("Index of input: ${outputSwapIdxPair.second}")
                 val output = outputSwapIdxPair.first
+                log.debug("Output: {}", output)
+                log.debug("Inputs: {}, {}", inputs.size, inputs)
                 val input = inputs[outputSwapIdxPair.second]
-                log.debug("Output: $output, Input: $input")
+                log.debug("Input: {}", input)
 
                 /* The input datum contains detail about the operation (buy or sell) */
                 val inputDatum: PlutusData = ClassifierHelpers.getPlutusDataFromOutput(input, txDTO.witnesses.datums) ?: return@swaploop
@@ -161,7 +163,7 @@ object WingridersClassifier: DexClassifier {
                             )
                     }
                 }
-                log.debug("Amounts, 1: $amount1, 2: $amount2")
+                log.debug("Amounts, 1: {}, 2: {}", amount1, amount2)
 
                 val swapDTO = SwapDTO(
                     txDTO.txHash,
@@ -173,10 +175,10 @@ object WingridersClassifier: DexClassifier {
                     amount2.toBigDecimal(),
                     swapDirection
                 )
-                log.debug("Computed swap: $swapDTO")
+                log.debug("Computed swap: {}", swapDTO)
                 swapDTOS.add(swapDTO)
             }
-        log.debug("Computed swaps: $swapDTOS")
+        log.debug("Computed swaps: {}", swapDTOS)
         return swapDTOS
     }
 

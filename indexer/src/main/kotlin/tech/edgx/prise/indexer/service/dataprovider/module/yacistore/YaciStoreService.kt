@@ -33,8 +33,6 @@ class YaciStoreService(private val config: Config) : KoinComponent, ChainDatabas
         .connectTimeout(Duration.ofSeconds(10))
         .build()
 
-    val MAX_ATTEMPTS = 50
-
     override fun getBlockNearestToSlot(slot: Long): BlockView? {
         // Temporarily delegating to blockfrost until better solution is available
         return blockfrostService.getBlockNearestToSlot(slot)
@@ -46,7 +44,10 @@ class YaciStoreService(private val config: Config) : KoinComponent, ChainDatabas
         val request = buildPostRequest(requestBody, "/api/v1/utxos", config.yacistoreDatasourceApiKey)
         log.debug("Yacistore request: {}, headers: {}, body: {}", request, request.headers(), requestBody)
 
-        val maxAttempts = 100 // Set high since this indexer may be ahead of the other indexer
+        // Set high since this indexer may be ahead of the other indexer.
+        // Overridable via -Dprise.maxProviderAttempts so tests can fail fast
+        // instead of retrying for ~27 minutes against a down endpoint.
+        val maxAttempts = System.getProperty("prise.maxProviderAttempts")?.toIntOrNull() ?: 100
         var attempts = 0
         val baseDelay = 1000L // 1 second
         val maxDelay = 16000L // 16 seconds
@@ -133,7 +134,7 @@ class YaciStoreService(private val config: Config) : KoinComponent, ChainDatabas
             .uri(URI.create("${config.yacistoreDatasourceUrl}$snippet"))
             .GET()
             .setHeader("Accepts", "application/json")
-            .timeout(Duration.ofSeconds(30)) // Timeout for the entire reques
+            .timeout(Duration.ofSeconds(30)) // Timeout for the entire request
         return requestBuilder.build()
     }
 }

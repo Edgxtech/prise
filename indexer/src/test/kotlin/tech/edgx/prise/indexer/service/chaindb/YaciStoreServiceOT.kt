@@ -1,5 +1,7 @@
 package tech.edgx.prise.indexer.service.chaindb
 
+import org.junit.jupiter.api.Tag
+
 import com.bloxbean.cardano.yaci.core.model.TransactionInput
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
@@ -19,6 +21,7 @@ import kotlin.test.assertTrue
 
 /* Optional Test (OT), prevent from executing in surefire reports since is optional module */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Tag("integration")
 class YaciStoreServiceOT: Base() {
 
     val yaciStoreService: ChainDatabaseService by inject(named("yacistore")) { parametersOf() }

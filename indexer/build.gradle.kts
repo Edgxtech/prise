@@ -113,8 +113,57 @@ sourceSets.main {
     java.srcDirs("src/main/java", "src/main/kotlin")
 }
 
+// `src/test/.../slt` is a symlink into an out-of-repo OneDrive scratch area
+// (project-data/slt) holding network-bound SLT/Debugging/Scraper sources.
+// They are not part of the test suite: they pull in live-service code, leave
+// stale compiled classes behind, and fail to hash across the CloudStorage
+// boundary. Exclude them from compilation entirely.
+sourceSets.test {
+    java.exclude("**/slt/**")
+}
+kotlin.sourceSets.test {
+    kotlin.exclude("**/slt/**")
+}
+
+// Excluding from the source set filters what gets *compiled*, but the
+// KotlinCompile task still snapshots the symlinked `slt` dir as an input for
+// up-to-date checks — and Gradle cannot MD5-hash files across the OneDrive
+// CloudStorage boundary, which fails the build intermittently. Also exclude
+// the path from the compile task's tracked inputs.
+tasks.named<KotlinCompile>("compileTestKotlin") {
+    exclude("**/slt/**")
+}
+
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+// Default `test` task runs only fast, hermetic unit tests.
+// Integration tests (tagged "integration") reach live external services
+// (Cardano node, Koios/Blockfrost/YaciStore APIs) and hang when unreachable,
+// so they are excluded from `test` and run on-demand via `integrationTest`.
+tasks.named<Test>("test") {
+    useJUnitPlatform {
+        excludeTags("integration")
+    }
+}
+
+tasks.register<Test>("integrationTest") {
+    description = "Runs integration tests that require live external services."
+    group = "verification"
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    useJUnitPlatform {
+        includeTags("integration")
+    }
+    // In production the data-provider services retry a downed endpoint up to
+    // hundreds of times (YaciStore: 100 x up to 16s ~= 27 min). For tests we
+    // want a down/misconfigured endpoint to fail in seconds, not block the run.
+    // Override via -Dprise.maxProviderAttempts=N (default keeps prod behaviour).
+    systemProperty(
+        "prise.maxProviderAttempts",
+        System.getProperty("prise.maxProviderAttempts") ?: "2"
+    )
 }
 
 tasks.jar {

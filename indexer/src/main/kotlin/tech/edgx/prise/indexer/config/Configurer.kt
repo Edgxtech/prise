@@ -323,6 +323,21 @@ class Configurer(private val configFile: String?) : KoinComponent {
             if (updateInterval == null || updateInterval < 1) {
                 throw ConfigurationException("Invalid ${Constants.LATEST_PRICES_UPDATE_INTERVAL_PROPERTY}: $updateInterval")
             }
+            val (chainDbModule, _) = helpers.getValue(
+                Constants.CHAIN_DATABASE_SERVICE_MODULE_PROPERTY, "carpJDBC", "CHAIN_DATABASE_SERVICE_MODULE"
+            )
+            val datasourceUrlProperty = when (chainDbModule) {
+                ChainDatabaseServiceEnum.koios.name -> Constants.KOIOS_DATASOURCE_URL_PROPERTY to "KOIOS_DATASOURCE_URL"
+                ChainDatabaseServiceEnum.blockfrost.name -> Constants.BLOCKFROST_DATASOURCE_URL_PROPERTY to "BLOCKFROST_DATASOURCE_URL"
+                ChainDatabaseServiceEnum.yacistore.name -> Constants.YACISTORE_DATASOURCE_URL_PROPERTY to "YACISTORE_DATASOURCE_URL"
+                else -> null
+            }
+            if (datasourceUrlProperty != null) {
+                val (datasourceUrl, _) = helpers.getValue(datasourceUrlProperty.first, datasourceUrlProperty.second)
+                if (datasourceUrl.isNullOrBlank()) {
+                    throw ConfigurationException("Invalid ${datasourceUrlProperty.first}: must be set for ${Constants.CHAIN_DATABASE_SERVICE_MODULE_PROPERTY}=$chainDbModule")
+                }
+            }
         }
     }
 }
